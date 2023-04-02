@@ -1,0 +1,239 @@
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this template
+*/
+/*
+    Created on : Mar 28, 2023, 8:52:49 AM
+    Author     : ykonoclast
+*/
+
+:root
+{
+	/*3% de la largeur du viewport*/
+	--gap: 2vw;
+	--cols: 3;
+	/*largeur colonne = la largeur de l'écran divisée par le nombre de colonnes, ajusté par les gaps entre les colonnes */
+	--grid-column-width: calc((100% / var(--cols)) - ((var(--gap) * (var(--cols) - 1)) / var(--cols)) );
+	--text-heavy:#c93c3c;
+	--text-light:#e06c6c;
+	--dark:rgb(63, 16, 16)/*#3f1010*/;
+	--dark-alpha:rgb(63, 16, 16,0.2);
+	--fond-clair:#fffcf0;
+	--fond-moyen:#fff6e4;
+	--fond-fonce:#fbe2c5;
+	--outline:#fbb4577e;
+}
+
+
+
+@font-face
+{
+	font-family: "EBGaramond";
+	src: url("../fonts/EBGaramond-Italic.otf");
+	font-style: italic, oblique;
+}
+
+@font-face
+{
+	font-family: "EBGaramond";
+	src: url("../fonts/EBGaramond-SemiBold.otf");
+	font-weight: bold;
+}
+
+@font-face
+{
+	font-family: "EBGaramond";
+	src: url("../fonts/EBGaramond-Regular.otf");
+}
+
+*
+{
+	font-family: EBGaramond;
+}
+
+
+body,header
+{
+	background-color: var(--fond-clair);
+}
+
+body
+{
+	margin: 0;
+	/*box-shadow: 0 0 25px var(--outline) inset;*/
+}
+
+header
+{
+	box-shadow:0 0.1rem 0.2rem/*5px*/ var(--dark-alpha);
+}
+
+.mainRecap
+{
+	box-shadow:0 -0.1rem 0.2rem/*5px*/ var(--dark-alpha);
+}
+
+
+header
+{
+
+	position:sticky;
+	top:0;
+	font-size:1.4rem;
+}
+
+main
+{
+	font-size:2rem;
+}
+
+.invArea
+{
+	display:grid;
+	grid-template-columns: repeat(var(--cols), var(--grid-column-width));
+	/*gap: var(--gap);*/
+	/*gap : 2vw;*/
+	column-gap: 2vw;
+	row-gap:4vh;
+	margin: 1rem;
+
+}
+
+h1, h3, h4{
+	color:var(--text-heavy);
+}
+
+h1, h3
+{
+	text-align:center;
+
+	font-variant: small-caps;
+}
+
+
+
+h1
+{
+	margin-top: 0;
+	margin-bottom : 2rem;
+}
+
+h3
+{
+	margin-top: 0;
+	margin-bottom : 0.1rem;
+}
+
+.result
+{
+	color:var(--text-light);
+}
+
+section
+{
+	background-color:var(--fond-moyen);
+	border-radius: 1%;
+	box-shadow: 0.1rem 0.1rem 0.2rem var(--dark-alpha);
+	padding-left : 0.3rem;
+	padding-bottom : 0.3rem;
+}
+
+table
+{
+	width: 100%;
+	overflow-wrap: break-word;
+	table-layout: fixed;/*sans cela le break-word ne suffira pas car les colonnes se redimmensioneront*/
+}
+
+.colObj
+{
+	width:72%;
+}
+
+
+.colEnc
+{
+	width:20%;
+	text-align:center;
+}
+
+
+
+.colDel
+{
+	width:8%;
+	color:darkred;
+	text-align:center;
+	/*TODO curseur main sur la croix et trouver comment agrandir celle-ci*/
+	background-color: var(--fond-moyen);
+}
+
+.colDel:hover
+{
+	color:red;
+	cursor:pointer;
+}
+
+th
+{
+	color: var(--text-light);
+}
+
+.secRecap
+{
+	margin-top:1.5rem;
+}
+
+.mainRecap
+{
+	position:sticky;
+	/*width:inherit;*/
+	bottom:0;
+	overflow-wrap: break-word;
+	display:flex;
+	flex-wrap:wrap;
+	justify-content: space-between;
+	padding-left:1rem;
+	padding-right:1rem;
+}
+
+.mainRecap > div > h4
+{
+	display: inline;
+}
+
+
+tr:nth-child(even) {
+    background: var(--fond-fonce);
+}
+
+
+
+
+/*seulement pour lecture à l'écran et taille doit être proche de tablette portrait ou smartphone paysage*/
+@media only screen and (max-width: 900px)
+{
+	:root
+	{
+		--cols: 2;
+	}
+
+	.mainRecap
+	{
+		font-size: 1.7rem;
+	}
+}
+
+/*seulement pour lecture à l'écran et taille doit être proche de smartphone portrait*/
+@media only screen and (max-width: 600px)
+{
+	:root
+	{
+		--cols: 1;
+	}
+
+	.mainRecap
+	{
+		font-size: 1.4rem;
+	}
+}
