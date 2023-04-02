@@ -179,6 +179,7 @@ th
 	padding-left:1rem;
 	padding-right:1rem;
 	box-shadow:0 -0.1rem 0.2rem var(--dark-alpha);
+	font-size: 1.8rem;
 }
 
 /*tous les enfants de type h4 d'un div lui-même enfant de la classe mainRecap'*/
@@ -202,7 +203,7 @@ th
 
 	.mainRecap
 	{
-		font-size: 1.7rem;
+		font-size: 1.4rem;
 	}
 }
 
@@ -214,8 +215,5 @@ th
 		--cols: 1;
 	}
 
-	.mainRecap
-	{
-		font-size: 1.4rem;
-	}
+
 }
