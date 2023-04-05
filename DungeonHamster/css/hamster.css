@@ -1,0 +1,241 @@
+/*
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this template
+*/
+/*
+    Created on : Mar 28, 2023, 8:52:49 AM
+    Author     : ykonoclast
+*/
+
+:root
+{
+	--cols: 3;
+	--colGap: 2vw;
+	--rowGap: 4vh;
+	/*largeur colonne = la largeur de l'écran divisée par le nombre de colonnes, ajusté par les gaps entre les colonnes */
+	--grid-column-width: calc((100% / var(--cols)) - ((var(--colGap) * (var(--cols) - 1)) / var(--cols)) );
+
+	/*couleurs textes et fonds*/
+	--text-heavy:#c93c3c;
+	--text-light:#e06c6c;
+	--dark:rgb(63, 16, 16);
+	--dark-alpha:rgb(63, 16, 16,0.2);
+	--fond-clair:#fffcf0;
+	--fond-moyen:#fff6e4;
+	--fond-fonce:#fbe2c5;
+	/*ci-dessous non utilisé mais pourrait être joli avec une ombre interne de la forme : box-shadow: 0 0 25px var(--outline) inset;*/
+	/*--outline:#fbb4577e;*/
+}
+
+@font-face
+{
+	font-family: "EBGaramond";
+	src: url("../fonts/EBGaramond-Italic.otf");
+	font-style: italic, oblique;
+}
+
+@font-face
+{
+	font-family: "EBGaramond";
+	src: url("../fonts/EBGaramond-SemiBold.otf");
+	font-weight: bold;
+}
+
+@font-face
+{
+	font-family: "EBGaramond";
+	src: url("../fonts/EBGaramond-Regular.otf");
+}
+
+/*Garamond pour absolument tout le monde*/
+*
+{
+	font-family: EBGaramond;
+}
+
+body,header
+{
+	background-color: var(--fond-clair);
+}
+
+body
+{
+	margin: 0;
+}
+
+header
+{
+	box-shadow:0 0.1rem 0.2rem var(--dark-alpha);
+	position:sticky;/*sticky va fixer en position même si scroll mais va tout de même laisser dans le flow, contrairement à fixed*/
+	top:0;/*nécessaire car sticky : doit avoir un point d'ancrage relatif au parent, avec cela ça colle en haut*/
+	font-size:1.4rem;/*comme le reste des polices est doublé, celle du header est un peu augmentée pour rester assez grande*/
+}
+
+main
+{
+	font-size:2rem;/*toutes polices du contenu sont doublées*/
+
+}
+
+/*zone avec les inventaires, dans le main*/
+.invArea
+{
+	display:grid;
+	grid-template-columns: repeat(var(--cols), var(--grid-column-width));/*template calculé dynamiquement en fonction du nombre de colonnes et de leur écartement, lui-même calculé dynamiquement dans :root*/
+	column-gap: var(--colGap);
+	row-gap: var(--rowGap);/*permet que ce soit petit sur PC et grand en portrait mobile (car relatif à la hauteur du viewport)*/
+	margin: 1rem;/*on écarte un peu du bord*/
+}
+
+h1, h3, h4
+{
+	color:var(--text-heavy);
+}
+
+h1, h3
+{
+	text-align:center;
+	font-variant: small-caps;
+	margin-top: 0;
+}
+
+h1
+{
+	margin-bottom : 2rem;
+}
+
+h3
+{
+	margin-top: 0;
+	margin-bottom : 0.1rem;
+}
+
+section
+{
+	background-color:var(--fond-moyen);
+	border-radius: 1%;
+	box-shadow: 0.1rem 0.1rem 0.2rem var(--dark-alpha);
+	/*on padde à gauche et en bas car c'est là que les lignes de table vont percuter le bord de la section, à droite il y a la colonne semi-vide de suppression et en haut le heading et ses propres marges'*/
+	padding-left : 0.3rem;
+	padding-bottom : 0.3rem;
+}
+
+section:hover
+{
+	box-shadow: 0.1rem 0.1rem 0.2rem 0.15rem var(--dark-alpha);
+}
+
+table
+{
+	width: 100%;/*prend la largeur du container, la section*/
+	overflow-wrap: break-word;
+	table-layout: fixed;/*sans cela le break-word ne suffira pas car les colonnes se redimmensioneront*/
+}
+
+/*toutes les lignes paires de la table, permet de ne pas prendre la ligne des titres de colonnes*/
+tr:nth-child(even)
+{
+    background: var(--fond-fonce);
+}
+
+th
+{
+	color: var(--text-light);
+}
+
+.colObj
+{
+	width:72%;
+}
+
+.colEnc
+{
+	width:20%;
+	text-align:center;
+}
+
+.colDel,.coldelHead
+{
+	width:8%;
+	color:darkred;
+	text-align:center;
+	background-color: var(--fond-moyen);
+}
+
+.colDel:hover
+{
+	color:red;
+	cursor:pointer;
+}
+
+/*:empty pseduo-classe : signifie si l'élément est vide : ainsi on ne targette que les cellules non remplies (les headers de tables le sont donc ne seront pas concernés)*/
+/*::before pseudo-élément : ajoute un élément devenant le premier élément de l'élément : utilisé en conjonction avec content pour injecter du contenu */
+.colObj:empty::before,.colEnc:empty::before
+{
+	color: #888;
+	font-style: italic;
+}
+
+.colObj:empty::before {
+	content: "Entrer nom objet...";
+}
+
+.colEnc:empty::before {
+	content: "#";
+}
+
+
+.secRecap
+{
+	margin-top:1.5rem;
+}
+
+.mainRecap
+{
+	position:fixed;
+	bottom:0;
+	left:0;
+	right:0;
+	overflow-wrap: break-word;
+	display:flex;
+	flex-wrap:wrap;
+	justify-content: space-between;
+	padding-left:1rem;
+	padding-right:1rem;
+	box-shadow:0 -0.1rem 0.2rem var(--dark-alpha);
+	font-size: 1.8rem;
+}
+
+/*tous les enfants de type h4 d'un div lui-même enfant de la classe mainRecap'*/
+.mainRecap > div > h4
+{
+	display: inline;/*de base les h4 sont block: donc on va à la ligne après et là on veut afficher le texte à la suite, donc inline*/
+}
+
+.result
+{
+	color:var(--text-light);
+}
+
+/*seulement pour lecture à l'écran et taille doit être proche de tablette portrait ou smartphone paysage*/
+@media only screen and (max-width: 900px)
+{
+	:root
+	{
+		--cols: 2;
+	}
+
+	.mainRecap
+	{
+		font-size: 1.4rem;
+	}
+}
+
+/*seulement pour lecture à l'écran et taille doit être proche de smartphone portrait*/
+@media only screen and (max-width: 600px)
+{
+	:root
+	{
+		--cols: 1;
+	}
+}
