@@ -7,6 +7,10 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
     Author     : ykonoclast
 */
 
+/*TODO variables pour ombres et autres écartements standards*/
+/*TODO classes séparées pour headers et rows des colonnes de table avec factorisation pour la width notamment*/
+/*TODO padding left pour le curseur de la colonne objet*/
+
 :root
 {
 	--cols: 3;
