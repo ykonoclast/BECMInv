@@ -14,10 +14,10 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 :root
 {
 	--cols: 3;
-	--colGap: 2vw;
-	--rowGap: 4vh;
+	--col-gap: 2vw;
+	--row-gap: 4vh;
 	/*largeur colonne = la largeur de l'écran divisée par le nombre de colonnes, ajusté par les gaps entre les colonnes */
-	--grid-column-width: calc((100% / var(--cols)) - ((var(--colGap) * (var(--cols) - 1)) / var(--cols)) );
+	--grid-column-width: calc((100% / var(--cols)) - ((var(--col-gap) * (var(--cols) - 1)) / var(--cols)) );
 
 	/*couleurs textes et fonds*/
 	--text-heavy:#c93c3c;
@@ -51,6 +51,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 	src: url("../fonts/EBGaramond-Regular.otf");
 }
 
+
 /*Garamond pour absolument tout le monde*/
 *
 {
@@ -82,12 +83,12 @@ main
 }
 
 /*zone avec les inventaires, dans le main*/
-.invArea
+.Inv_Area
 {
 	display:grid;
 	grid-template-columns: repeat(var(--cols), var(--grid-column-width));/*template calculé dynamiquement en fonction du nombre de colonnes et de leur écartement, lui-même calculé dynamiquement dans :root*/
-	column-gap: var(--colGap);
-	row-gap: var(--rowGap);/*permet que ce soit petit sur PC et grand en portrait mobile (car relatif à la hauteur du viewport)*/
+	column-gap: var(--col-gap);
+	row-gap: var(--row-gap);/*permet que ce soit petit sur PC et grand en portrait mobile (car relatif à la hauteur du viewport)*/
 	margin: 1rem;/*on écarte un peu du bord*/
 }
 
@@ -147,18 +148,18 @@ th
 	color: var(--text-light);
 }
 
-.colObj
+.Col_Obj
 {
 	width:72%;
 }
 
-.colEnc
+.Col_Enc
 {
 	width:20%;
 	text-align:center;
 }
 
-.colDel,.coldelHead
+.Col_Del,.Col_Del_Head
 {
 	width:8%;
 	color:darkred;
@@ -166,7 +167,7 @@ th
 	background-color: var(--fond-moyen);
 }
 
-.colDel:hover
+.Col_Del:hover
 {
 	color:red;
 	cursor:pointer;
@@ -174,27 +175,27 @@ th
 
 /*:empty pseduo-classe : signifie si l'élément est vide : ainsi on ne targette que les cellules non remplies (les headers de tables le sont donc ne seront pas concernés)*/
 /*::before pseudo-élément : ajoute un élément devenant le premier élément de l'élément : utilisé en conjonction avec content pour injecter du contenu */
-.colObj:empty::before,.colEnc:empty::before
+.Col_Obj:empty::before,.Col_Enc:empty::before
 {
 	color: #888;
 	font-style: italic;
 }
 
-.colObj:empty::before {
+.Col_Obj:empty::before {
 	content: "Entrer nom objet...";
 }
 
-.colEnc:empty::before {
+.Col_Enc:empty::before {
 	content: "#";
 }
 
 
-.secRecap
+.Sec_Recap
 {
 	margin-top:1.5rem;
 }
 
-.mainRecap
+.Main_Recap
 {
 	position:fixed;
 	bottom:0;
@@ -210,8 +211,8 @@ th
 	font-size: 1.8rem;
 }
 
-/*tous les enfants de type h4 d'un div lui-même enfant de la classe mainRecap'*/
-.mainRecap > div > h4
+/*tous les enfants de type h4 d'un div lui-même enfant de la classe Main_Recap'*/
+.Main_Recap > div > h4
 {
 	display: inline;/*de base les h4 sont block: donc on va à la ligne après et là on veut afficher le texte à la suite, donc inline*/
 }
@@ -229,7 +230,7 @@ th
 		--cols: 2;
 	}
 
-	.mainRecap
+	.Main_Recap
 	{
 		font-size: 1.4rem;
 	}

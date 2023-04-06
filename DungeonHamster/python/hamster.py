@@ -1,36 +1,31 @@
 from browser import document, console, window, html
 
-#TODO les noms des fonctions et variables partent dans tous les sens, clarifier
+#TODO voir si on met tous les binds à la fin d'un seul coup ou si on les laisse répartis.
 
 #SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
-def setMainPadding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
-	height=document["mainRecap"].height
-	main=document["main"]
-	#main prend un padding car mettre de la marge à l'invArea ne marchera pas : la marge n'est calculée que si un élément suit, or la barre est fixed donc hors flux
+def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
+	height=document["main_recap_id"].height
+	main=document["main_id"]
+	#main prend un padding car mettre de la marge à l'Inv_Area ne marchera pas : la marge n'est calculée que si un élément suit, or la barre est fixed donc hors flux
 	#on ajoute 1rem au padding car ainsi ça décolle un peu plus
 	main.style.paddingBottom=f"calc({height}px + 1rem)"
 
 #on appelle une première fois la fonction d'écartement au chargement de la page
-setMainPadding()
+set_main_padding()
 #on la binde au redimmensionnement de la fenêtre
-window.bind('resize', setMainPadding)
+window.bind('resize', set_main_padding)
 
-#SECTION creation et suppression des rows des tables
-def newRow(tbody):
-	newRow=html.TR()
-	cellObj=html.TD(Class="colObj", contenteditable="true")
-	cellEnc=html.TD(Class="colEnc", contenteditable="true")#TODO attention le type d'input est à définir aussi sinon il n'y a pas les bons claviers pour les nouvelles lignes
-	cellDel=html.TD("✖",Class="colDel")
-	#on binde les mêmes listeners que pour les cellules de base
-	cellObj.bind("input",whenObjChanged)
-	cellEnc.bind("input",whenEncChanged)
-	cellDel.bind('click',delRow)
-	newRow.appendChild(cellObj)
-	newRow.appendChild(cellEnc)
-	newRow.appendChild(cellDel)
-	tbody.appendChild(newRow)
+#SECTION fonctions utilitaires
+def get_section(elt):
+	name=""
+	current_node=elt
+	while name != "SECTION":
+		current_node=current_node.parent
+		name=current_node.nodeName
+	#TODO exception : si pas dans section
+	return current_node
 
-def getRowInfo(cellule):
+def get_row_info(cellule):
 	row = cellule.parent
 	row_index=row.rowIndex
 	tbody = row.parent
@@ -38,61 +33,117 @@ def getRowInfo(cellule):
 	nbrows=table.rows.length#TODO ne peut on passer par le tbody au lieu d'interroger la table et les rows de la table?
 	return tbody, nbrows, row_index, row
 
-def checkDelRow(cellule):
-	tbody,nbrows,index,row=getRowInfo(cellule)
+#SECTION gestion des valeurs numériques
+def update_enc(section):
+	#calcul du contenu de l'emplacement
+	sec_enc=section.getElementsByClassName("Sec_Enc")[0]
+	list_enc=section.getElementsByClassName("Col_Enc")
+	items_total = sum(int(x.text) for x in list_enc if x.text.isnumeric())
+	sec_enc.text=items_total
+
+	#prise en compte de l'encombrement intrinsèque
+	enc_intr=0
+	list_sec_intr=section.getElementsByClassName("Sec_Intr")
+	if list_sec_intr:#liste non vide : il y a donc une valeur intrinsèque pour cet emplacement
+		sec_intr=list_sec_intr[0]
+		enc_intr=int(sec_intr.text)
+
+	#affichage du total
+	sec_tot = section.getElementsByClassName("Sec_Tot")[0]
+	sec_tot.text=items_total+enc_intr
+
+	#validation des entrées
+	color=None
+	if items_total!=0:
+		list_sec_max=section.getElementsByClassName("Sec_Max")
+		color="MediumSpringGreen"
+		if list_sec_max:
+			sec_max=list_sec_max[0]
+			maxi=int(sec_max.text)
+			if items_total>maxi:
+				color="red"
+
+	sec_enc.style.color=sec_tot.style.color=color
+
+#SECTION creation et suppression des rows des tables
+def make_new_row(tbody):
+	new_row=html.TR()
+	cell_obj=html.TD(Class="Col_Obj", contenteditable="true")
+	cell_enc=html.TD(Class="Col_Enc", contenteditable="true", inputmode="decimal")#TODO attention le type d'input est à définir aussi sinon il n'y a pas les bons claviers pour les nouvelles lignes
+	cell_del=html.TD("✖",Class="Col_Del")
+	#on binde les mêmes listeners que pour les cellules de base
+	cell_obj.bind("input",when_obj_changed)
+	cell_enc.bind("input",when_enc_changed)
+	cell_del.bind('click',when_del_clicked)
+	new_row.appendChild(cell_obj)
+	new_row.appendChild(cell_enc)
+	new_row.appendChild(cell_del)
+	tbody.appendChild(new_row)
+
+def del_row(cellule):
+	tbody,nbrows,index,row=get_row_info(cellule)
+	section=get_section(cellule)
 	row.remove()
 	if index<2 and nbrows<3 or index==nbrows-1:#première et unique ligne ou dernière, on la recrée immédiatement
-		newRow(tbody)#TODO ne pas supprimer plutôt? A voir car il y a le cas du juste clear (premiere ligne seule)
+		#TODO voir si on peut tout de même pas THEAD et modifier alors ces valeurs d'index (avec tbody plutôt que table dans le css)
+		make_new_row(tbody)
+	update_enc(section)
 
-def preCheckDelRow(cellule, isEncCol):
+
+def check_del_row(cellule, is_enc_col):
 	row=cellule.parent
-	index=0
-	if not(isEncCol):
-		index=2
-	otherCell=row.childNodes[index]
-	if otherCell.textContent:
-		if isEncCol:#TODO le recheck de la même variable est assez dégueulasse
-			manageText(cellule)
+	class_name = "Col_Obj"
+	if not(is_enc_col):
+		class_name="Col_Enc"
+	other_cell=row.getElementsByClassName(class_name)[0]
+	if other_cell.textContent:#TODO tester si text marche pareil
+		if is_enc_col:#TODO le recheck de la même variable est assez dégueulasse
+			#manage_text(cellule)
+			update_enc(get_section(cellule))
+			cellule.style.background=None
 	else:
-		checkDelRow(cellule)
+		del_row(cellule)
 
-def delRow(e):
-	checkDelRow(e.target)
+def when_del_clicked(e):
+	del_row(e.target)
 
-listColdDev=document.getElementsByClassName("colDel")
-for i in listColdDev:
-	i.bind('click',delRow)
+list_col_del=document.getElementsByClassName("Col_Del")
+for i in list_col_del:
+	i.bind('click',when_del_clicked)
+
 
 #SECTION gestion du remplissage des rows des tables
-def manageText(cellule):
-	if cellule.textContent.isnumeric():
-		cellule.style.background="aquamarine"
-		tbody, nbrows, row_index, trash=getRowInfo(cellule)
+def manage_text(cellule):
+	texte_saisi=cellule.textContent
+	if texte_saisi.isnumeric():
+		cellule.style.background="MediumSpringGreen"
+		tbody, nbrows, row_index, trash=get_row_info(cellule)
 		if(row_index==(nbrows-1)):
-			newRow(tbody)
+			make_new_row(tbody)
 	else:
 		cellule.style.background="red"
+	update_enc(get_section(cellule))
 
-def validate(e,isEncCol):
+def validate(e,is_enc_col):
 	cellule = e.target
-	if cellule.textContent:
-		if isEncCol:
-			manageText(cellule)
+	if cellule.textContent:#TODO tester si text ne conviendrait pas
+		if is_enc_col:
+			manage_text(cellule)
 	else:
-		preCheckDelRow(cellule,isEncCol)
+		check_del_row(cellule,is_enc_col)
 
-def whenObjChanged(e):
+def when_obj_changed(e):
 	validate(e, False)
 
-def whenEncChanged(e):
+def when_enc_changed(e):
 	validate(e,True)
 
 
 
-listColEnc=document.getElementsByClassName("colEnc")
-for i in listColEnc:
-	i.bind("input",whenEncChanged)
+list_col_enc=document.getElementsByClassName("Col_Enc")
+for i in list_col_enc:
+	i.bind("input",when_enc_changed)
 
-listColObj=document.getElementsByClassName("colObj")
-for i in listColObj:
-	i.bind("input",whenObjChanged)
+list_col_obj=document.getElementsByClassName("Col_Obj")
+for i in list_col_obj:
+	i.bind("input",when_obj_changed)
