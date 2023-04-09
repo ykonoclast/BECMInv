@@ -41,7 +41,7 @@ list_mvt=[{"turn":120,"round":40},{"turn":90,"round":30},{"turn":60,"round":20},
 list_enc_thresh=[0,401,801,1201,1601,2401]
 
 def get_speeds(enc):
-	index=bisect_right(list_enc_thresh,enc)-1#TODO commenter plus avant cette ligne...
+	index=bisect_right(list_enc_thresh,enc)-1#bisect_right retourne l'indice de l'élément qui devrait suivre enc si celui-ci était inséré et que la liste devait rester trier, on fait -1 et cela sélectionne donc la valeur immédiatement inférieure à enc
 	return list_mvt[index]
 
 def get_section_enc(id):
@@ -84,13 +84,11 @@ def update_main_recap():
 	document["sanssacsclass_byturn_id"].text=sanssacsclass_speed_byturn
 	document["justebourseporte_byturn_id"].text=justebourseporte_speed_byturn
 
-
-
-
 def update_enc(section):
 	#calcul du contenu de l'emplacement
 	sec_enc=section.getElementsByClassName("Sec_Enc")[0]
 	list_enc=section.getElementsByClassName("Col_Enc")
+
 	items_total = sum(int(x.text) for x in list_enc if x.text.isnumeric())
 	sec_enc.text=items_total
 
@@ -106,7 +104,7 @@ def update_enc(section):
 	sec_tot.text=items_total+enc_intr
 
 	#validation des entrées
-	color=None
+	color=None#comme cela, si aucun cas, la couleur redevient par défaut
 	if items_total!=0:
 		list_sec_max=section.getElementsByClassName("Sec_Max")
 		color="MediumSpringGreen"
@@ -119,7 +117,6 @@ def update_enc(section):
 
 	#mise à jour du récap total en bas
 	update_main_recap()
-
 
 #SECTION creation et suppression des rows des tables
 def make_new_row(tbody):
@@ -145,16 +142,12 @@ def del_row(cellule):
 		make_new_row(tbody)
 	update_enc(section)
 
-
-def check_del_row(cellule, is_enc_col):
+def check_row_todel(cellule, is_enc_col):
 	row=cellule.parent
-	class_name = "Col_Obj"
-	if not(is_enc_col):
-		class_name="Col_Enc"
-	other_cell=row.getElementsByClassName(class_name)[0]
-	if other_cell.textContent:#TODO tester si text marche pareil
-		if is_enc_col:#TODO le recheck de la même variable est assez dégueulasse
-			#manage_text(cellule)
+	other_class_name="Col_Obj" if is_enc_col else "Col_Enc"
+	other_cell=row.getElementsByClassName(other_class_name)[0]
+	if other_cell.text:
+		if is_enc_col:
 			update_enc(get_section(cellule))
 			cellule.style.background=None
 	else:
@@ -167,34 +160,34 @@ list_col_del=document.getElementsByClassName("Col_Del")
 for i in list_col_del:
 	i.bind('click',when_del_clicked)
 
-
 #SECTION gestion du remplissage des rows des tables
-def manage_text(cellule):
-	texte_saisi=cellule.textContent
+def validate_enc(cellule):
+	list_BR=cellule.getElementsByTagName("BR")
+	for i in list_BR:#suppression des sauts de ligne
+		i.remove()
+	texte_saisi=cellule.text
 	if texte_saisi.isnumeric():
 		cellule.style.background="MediumSpringGreen"
 		tbody, nbrows, row_index, trash=get_row_info(cellule)
-		if(row_index==(nbrows-1)):
+		if(row_index==(nbrows-1)):#on est en train de remplir l'enc de la dernière ligne, il faut donc en rajouter une
 			make_new_row(tbody)
 	else:
 		cellule.style.background="red"
-	update_enc(get_section(cellule))
+	update_enc(get_section(cellule))#on appelle toujours l'update de l'enc car on peut avoir rendu non-numérique une cellule l'étant antérieurement
 
-def validate(e,is_enc_col):
+def check_text_changed(e,is_enc_col):
 	cellule = e.target
-	if cellule.textContent:#TODO tester si text ne conviendrait pas
+	if cellule.text:
 		if is_enc_col:
-			manage_text(cellule)
+			validate_enc(cellule)
 	else:
-		check_del_row(cellule,is_enc_col)
+		check_row_todel(cellule,is_enc_col)
 
 def when_obj_changed(e):
-	validate(e, False)
+	check_text_changed(e, False)
 
 def when_enc_changed(e):
-	validate(e,True)
-
-
+	check_text_changed(e,True)
 
 list_col_enc=document.getElementsByClassName("Col_Enc")
 for i in list_col_enc:
