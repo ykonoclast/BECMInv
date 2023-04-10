@@ -204,23 +204,33 @@ def when_checkbox_clicked(e):
 	section=get_section(case)
 	list_td=section.getElementsByTagName("TD")
 
-	contenteditable=False
-	class_name="Inactive_Section"
-
-	if case.checked:
-		binding=when_del_clicked
-		contenteditable=True
-		class_name="Active_Section"
-
-	section.class_name=class_name
 	for td in list_td:
-		if td.class_name=="Col_Del":
-			if case.checked:
+		if case.checked:
+			section.class_name="Active_Section"
+			if td.class_name=="Col_Del":
 				td.bind('click',when_del_clicked)
 			else:
-				td.unbind('click',when_del_clicked)
+				td.setAttribute("contenteditable", True)
+				if td.class_name=="Col_Enc":
+					td.setAttribute("inputmode","numeric")
+					if td.text:
+						validate_enc(td)
 		else:
-			td.setAttribute("contenteditable", contenteditable)
+			section.class_name="Inactive_Section"
+			if td.class_name=="Col_Del":
+				td.unbind('click',when_del_clicked)
+			else:
+				td.setAttribute("contenteditable", False)
+				if td.class_name=="Col_Enc":
+					td.style.background="transparent"
+
+			sec_tot = section.getElementsByClassName("Sec_Tot")[0]
+			sec_enc = section.getElementsByClassName("Sec_Enc")[0]
+			sec_enc.style.color=sec_tot.style.color="#888"
+
+			#neutralisation de l'encombrement
+			sec_tot.text=0
+			update_main_recap()
 
 
 list_checkboxes=document.getElementsByTagName("INPUT")

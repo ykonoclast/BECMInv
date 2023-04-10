@@ -9,7 +9,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 
 /*TODO variables pour ombres et autres écartements standards*/
 /*TODO classes séparées pour headers et rows des colonnes de table avec factorisation pour la width notamment*/
-/*TODO padding left pour le curseur de la colonne objet*/
+
 
 :root
 {
@@ -22,7 +22,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 	/*couleurs textes et fonds*/
 	--text-heavy:#c93c3c;
 	--text-light:#e06c6c;
-	--texte-placeholder:#888;
+	--texte-inactif:#888;
 	--dark:rgb(63, 16, 16);
 	--dark-alpha:rgb(63, 16, 16,0.2);
 	--fond-clair:#fffcf0;
@@ -77,11 +77,13 @@ header
 	position:sticky;/*sticky va fixer en position même si scroll mais va tout de même laisser dans le flow, contrairement à fixed*/
 	top:0;/*nécessaire car sticky : doit avoir un point d'ancrage relatif au parent, avec cela ça colle en haut*/
 	font-size:1.4rem;/*comme le reste des polices est doublé, celle du header est un peu augmentée pour rester assez grande*/
+	z-index:10;/*pour passer au-dessus des sections*/
 }
 
 main
 {
 	font-size:2rem;/*toutes polices du contenu sont doublées*/
+	z-index:1;/*on le définit ici car le z-index est par rapport au parent : si on le mettait dans les sections çá ne changerait pas la hauteur du main par rapport au header*/
 
 }
 
@@ -189,7 +191,7 @@ th
 
 .Inactive_Section th, .Inactive_Section .Sec_Recap
 {
-	color:var(--texte-placeholder)
+	color:var(--texte-inactif)
 }
 
 .Col_Obj
@@ -201,6 +203,11 @@ th
 {
 	width:20%;
 	text-align:center;
+}
+
+td.Col_Obj
+{
+	padding-left: 0.5rem;
 }
 
 .Col_Del,.Col_Del_Head
@@ -230,21 +237,25 @@ th
 }
 
 
-
-
 /*:empty pseduo-classe : signifie si l'élément est vide : ainsi on ne targette que les cellules non remplies (les headers de tables le sont donc ne seront pas concernés)*/
 /*::before pseudo-élément : ajoute un élément devenant le premier élément de l'élément : utilisé en conjonction avec content pour injecter du contenu */
+.Col_Obj:empty::before,.Col_Enc:empty::before,.Inactive_Section .Col_Obj, .Inactive_Section .Col_Enc
+{
+	color:var(--texte-inactif);
+}
+
 .Col_Obj:empty::before,.Col_Enc:empty::before
 {
-	color:var(--texte-placeholder);
 	font-style: italic;
 }
 
-.Col_Obj:empty::before {
+.Col_Obj:empty::before
+{
 	content: "Entrer nom objet...";
 }
 
-.Col_Enc:empty::before {
+.Col_Enc:empty::before
+{
 	content: "#";
 }
 
@@ -268,6 +279,11 @@ th
 	padding-right:1rem;
 	box-shadow:0 -0.1rem 0.2rem var(--dark-alpha);
 	font-size: 1.8rem;
+}
+
+.Inactive_Section .Main_Recap
+{
+	color:var(--texte-inactif)
 }
 
 /*tous les enfants de type h4 d'un div lui-même enfant de la classe Main_Recap'*/
