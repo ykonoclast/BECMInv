@@ -22,11 +22,14 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 	/*couleurs textes et fonds*/
 	--text-heavy:#c93c3c;
 	--text-light:#e06c6c;
+	--texte-placeholder:#888;
 	--dark:rgb(63, 16, 16);
 	--dark-alpha:rgb(63, 16, 16,0.2);
 	--fond-clair:#fffcf0;
 	--fond-moyen:#fff6e4;
 	--fond-fonce:#fbe2c5;
+	--fond-moyen-inactif:whitesmoke;
+	--fond-fonce-inactif:gainsboro;
 	/*ci-dessous non utilisé mais pourrait être joli avec une ombre interne de la forme : box-shadow: 0 0 25px var(--outline) inset;*/
 	/*--outline:#fbb4577e;*/
 }
@@ -115,19 +118,50 @@ h3
 	margin-bottom : 0.1rem;
 }
 
+.Inactive_Section h3
+{
+	color:dimgrey;
+}
+
 section
 {
-	background-color:var(--fond-moyen);
 	border-radius: 1%;
-	box-shadow: 0.1rem 0.1rem 0.2rem var(--dark-alpha);
 	/*on padde à gauche et en bas car c'est là que les lignes de table vont percuter le bord de la section, à droite il y a la colonne semi-vide de suppression et en haut le heading et ses propres marges'*/
 	padding-left : 0.3rem;
 	padding-bottom : 0.3rem;
+	position:relative;/*on se met en relative SANS spécifier de décalage afin de ne pas être en position */
 }
 
-section:hover
+
+.Active_Section, .Main_Recap
+{
+	background-color:var(--fond-moyen);
+}
+
+.Active_Section
+{
+	box-shadow: 0.1rem 0.1rem 0.2rem var(--dark-alpha);
+}
+
+.Active_Section:hover
 {
 	box-shadow: 0.1rem 0.1rem 0.2rem 0.15rem var(--dark-alpha);
+}
+
+.Inactive_Section
+{
+	background-color:var(--fond-moyen-inactif);
+}
+
+
+
+input[type=checkbox]
+{
+	position:absolute;/*absolute retire du flow, comme cela le h3 de la section restera centré*/
+	top:1rem;
+	left:1rem;
+	transform: scale(2.8);
+	accent-color:var(--text-heavy);
 }
 
 table
@@ -143,9 +177,19 @@ tr:nth-child(even)
     background: var(--fond-fonce);
 }
 
+.Inactive_Section tr:nth-child(even)
+{
+    background: var(--fond-fonce-inactif);
+}
+
 th
 {
 	color: var(--text-light);
+}
+
+.Inactive_Section th, .Inactive_Section .Sec_Recap
+{
+	color:var(--texte-placeholder)
 }
 
 .Col_Obj
@@ -167,17 +211,32 @@ th
 	background-color: var(--fond-moyen);
 }
 
-.Col_Del:hover
+.Active_Section .Col_Del:hover
 {
 	color:red;
 	cursor:pointer;
 }
 
+.Inactive_Section td
+{
+	cursor: not-allowed;
+}
+
+
+.Inactive_Section .Col_Del,.Inactive_Section .Col_Del_Head/*l'espace signifie "n'importe quel descendant" par opposition au > qui n'est que pour les enfants directs"'*/
+{
+	color:darkgrey;
+	background-color: var(--fond-moyen-inactif);
+}
+
+
+
+
 /*:empty pseduo-classe : signifie si l'élément est vide : ainsi on ne targette que les cellules non remplies (les headers de tables le sont donc ne seront pas concernés)*/
 /*::before pseudo-élément : ajoute un élément devenant le premier élément de l'élément : utilisé en conjonction avec content pour injecter du contenu */
 .Col_Obj:empty::before,.Col_Enc:empty::before
 {
-	color: #888;
+	color:var(--texte-placeholder);
 	font-style: italic;
 }
 

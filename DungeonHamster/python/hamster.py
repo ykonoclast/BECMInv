@@ -158,7 +158,8 @@ def when_del_clicked(e):
 
 list_col_del=document.getElementsByClassName("Col_Del")
 for i in list_col_del:
-	i.bind('click',when_del_clicked)
+	if (get_section(i).class_name=="Active_Section"):
+		i.bind('click',when_del_clicked)
 
 #SECTION gestion du remplissage des rows des tables
 def validate_enc(cellule):

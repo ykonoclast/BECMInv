@@ -17,7 +17,32 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 		<header><h1>Dungeon Hamster</h1></header>
 		<main id="main_id">
 			<div class="Inv_Area">
-				<section>
+
+				<section class="Active_Section"><h3>Porté sur soi</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj contenteditable="true"></td>
+							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table><div id="recap_porte_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+
+				<section class="Active_Section"><h3>Bourse</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj contenteditable="true"></td>
+							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table>
+					<div id="recap_bourse_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">50</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+
+
+				<section class="Active_Section">
 					<h3>Sac à dos</h3>
 					<table>
 						<tr><th class=Col_Obj>Objet</th>
@@ -30,32 +55,9 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 					</table>
 					<div id="recap_sacdos_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">400</span> + <span class="Sec_Intr">20</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div>
 				</section>
-				<section>
-					<h3>Gros sac</h3>
-					<table>
-						<tr><th class=Col_Obj>Objet</th>
-							<th class=Col_Enc>Enc.</th>
-							<th class=Col_Del_Head></th></tr>
-						<tr><td class=Col_Obj contenteditable="true"></td>
-							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
-							<td class=Col_Del>✖
-							</td></tr>
-					</table>
-					<div id="recap_grossac_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">600</span> + <span class="Sec_Intr">5</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div>
 
-				</section>
-				<section><h3>Bourse</h3>
-					<table>
-						<tr><th class=Col_Obj>Objet</th>
-							<th class=Col_Enc>Enc.</th>
-							<th class=Col_Del_Head></th></tr>
-						<tr><td class=Col_Obj contenteditable="true"></td>
-							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
-							<td class=Col_Del>✖
-							</td></tr>
-					</table>
-					<div id="recap_bourse_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">50</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
-				<section><h3>Petit sac 1</h3>
+
+				<section class="Active_Section"><h3>Petit sac 1</h3>
 					<table>
 						<tr><th class=Col_Obj>Objet</th>
 							<th class=Col_Enc>Enc.</th>
@@ -65,7 +67,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 							<td class=Col_Del>✖
 							</td></tr>
 					</table><div id="recap_petitsac1_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">200</span> + <span class="Sec_Intr">1</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
-				<section><h3>Petit sac 2</h3>
+				<section class="Active_Section"><h3>Petit sac 2</h3>
 					<table>
 						<tr><th class=Col_Obj>Objet</th>
 							<th class=Col_Enc>Enc.</th>
@@ -76,7 +78,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 							</td></tr>
 					</table><div id="recap_petitsac2_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">200</span> + <span class="Sec_Intr">1</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
 
-				<section><h3>Petit sac 3</h3>
+				<section class="Active_Section"><h3>Petit sac 3</h3>
 					<table>
 						<tr><th class=Col_Obj>Objet</th>
 							<th class=Col_Enc>Enc.</th>
@@ -87,16 +89,22 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 							</td></tr>
 					</table><div id="recap_petitsac3_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">200</span> + <span class="Sec_Intr">1</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
 
-				<section><h3>Porté sur soi</h3>
+				<section class="Inactive_Section">
+					<input type="checkbox" id="check_grossac_id"/>
+					<h3>Gros sac</h3>
 					<table>
 						<tr><th class=Col_Obj>Objet</th>
 							<th class=Col_Enc>Enc.</th>
 							<th class=Col_Del_Head></th></tr>
-						<tr><td class=Col_Obj contenteditable="true"></td>
-							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
+						<tr><td class=Col_Obj></td>
+							<td class=Col_Enc></td>
 							<td class=Col_Del>✖
 							</td></tr>
-					</table><div id="recap_porte_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+					</table>
+					<div id="recap_grossac_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">600</span> + <span class="Sec_Intr">5</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div>
+
+				</section>
+
 			</div>
 
 			<section id="main_recap_id" class="Main_Recap">
