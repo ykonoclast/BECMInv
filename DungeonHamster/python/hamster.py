@@ -197,3 +197,32 @@ for i in list_col_enc:
 list_col_obj=document.getElementsByClassName("Col_Obj")
 for i in list_col_obj:
 	i.bind("input",when_obj_changed)
+
+#SECTION Gestion de l'activation/inactivation des sections
+def when_checkbox_clicked(e):
+	case=e.target
+	section=get_section(case)
+	list_td=section.getElementsByTagName("TD")
+
+	contenteditable=False
+	class_name="Inactive_Section"
+
+	if case.checked:
+		binding=when_del_clicked
+		contenteditable=True
+		class_name="Active_Section"
+
+	section.class_name=class_name
+	for td in list_td:
+		if td.class_name=="Col_Del":
+			if case.checked:
+				td.bind('click',when_del_clicked)
+			else:
+				td.unbind('click',when_del_clicked)
+		else:
+			td.setAttribute("contenteditable", contenteditable)
+
+
+list_checkboxes=document.getElementsByTagName("INPUT")
+for i in list_checkboxes:
+	i.bind('click',when_checkbox_clicked)
