@@ -212,7 +212,7 @@ def when_checkbox_clicked(e):
 		if case.checked:
 			#sec_enc.style.color=sec_tot.style.color=""
 			#TODO pourquoi la ligne ci-dessus empêche de remettre en vert/rouge plus tard?
-			#TODO et pourquoi ça marche maintenant alors que j'ai juste modifié le background?
+			#TODO et pourquoi ça marche maintenant alors que j'ai juste modifié le background? et viré la ligne avec un texte sur la présence de texte en dessous?
 			section.class_name="Active_Section"
 			if td.class_name=="Col_Del":
 				td.bind('click',when_del_clicked)
