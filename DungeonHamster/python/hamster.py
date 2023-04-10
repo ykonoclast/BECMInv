@@ -104,7 +104,7 @@ def update_enc(section):
 	sec_tot.text=items_total+enc_intr
 
 	#validation des entrées
-	color=None#comme cela, si aucun cas, la couleur redevient par défaut
+	color=""#comme cela, si aucun cas, la couleur redevient par défaut
 	if items_total!=0:
 		list_sec_max=section.getElementsByClassName("Sec_Max")
 		color="MediumSpringGreen"
@@ -113,6 +113,7 @@ def update_enc(section):
 			maxi=int(sec_max.text)
 			if items_total>maxi:
 				color="red"
+
 	sec_enc.style.color=sec_tot.style.color=color
 
 	#mise à jour du récap total en bas
@@ -167,13 +168,15 @@ def validate_enc(cellule):
 	for i in list_BR:#suppression des sauts de ligne
 		i.remove()
 	texte_saisi=cellule.text
+
 	if texte_saisi.isnumeric():
 		cellule.style.background="MediumSpringGreen"
 		tbody, nbrows, row_index, trash=get_row_info(cellule)
 		if(row_index==(nbrows-1)):#on est en train de remplir l'enc de la dernière ligne, il faut donc en rajouter une
 			make_new_row(tbody)
 	else:
-		cellule.style.background="red"
+		if texte_saisi:
+			cellule.style.background="red"
 	update_enc(get_section(cellule))#on appelle toujours l'update de l'enc car on peut avoir rendu non-numérique une cellule l'étant antérieurement
 
 def check_text_changed(e,is_enc_col):
@@ -203,9 +206,13 @@ def when_checkbox_clicked(e):
 	case=e.target
 	section=get_section(case)
 	list_td=section.getElementsByTagName("TD")
-
+	sec_tot = section.getElementsByClassName("Sec_Tot")[0]
+	sec_enc = section.getElementsByClassName("Sec_Enc")[0]
 	for td in list_td:
 		if case.checked:
+			#sec_enc.style.color=sec_tot.style.color=""
+			#TODO pourquoi la ligne ci-dessus empêche de remettre en vert/rouge plus tard?
+			#TODO et pourquoi ça marche maintenant alors que j'ai juste modifié le background?
 			section.class_name="Active_Section"
 			if td.class_name=="Col_Del":
 				td.bind('click',when_del_clicked)
@@ -213,8 +220,7 @@ def when_checkbox_clicked(e):
 				td.setAttribute("contenteditable", True)
 				if td.class_name=="Col_Enc":
 					td.setAttribute("inputmode","numeric")
-					if td.text:
-						validate_enc(td)
+					validate_enc(td)
 		else:
 			section.class_name="Inactive_Section"
 			if td.class_name=="Col_Del":
@@ -223,9 +229,6 @@ def when_checkbox_clicked(e):
 				td.setAttribute("contenteditable", False)
 				if td.class_name=="Col_Enc":
 					td.style.background="transparent"
-
-			sec_tot = section.getElementsByClassName("Sec_Tot")[0]
-			sec_enc = section.getElementsByClassName("Sec_Enc")[0]
 			sec_enc.style.color=sec_tot.style.color="#888"
 
 			#neutralisation de l'encombrement

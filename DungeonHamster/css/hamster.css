@@ -218,6 +218,11 @@ td.Col_Obj
 	background-color: var(--fond-moyen);
 }
 
+.Col_Del
+{
+	padding-bottom: 0.15rem;
+}
+
 .Active_Section .Col_Del:hover
 {
 	color:red;
