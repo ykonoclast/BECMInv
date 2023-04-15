@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<!--
+Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this template
+-->
+<html>
+	<head>
+		<!--problèmes rencontrés si manifest.json placé trop bas, ici au moins on est sûrs-->
+		<link rel="manifest" href="manifest.json">
+		<meta charset="UTF-8">
+		<script src="js/brython.js"></script>
+		<script src="js/brython_stdlib.js"></script>
+		<title>Dungeon Hamster</title>
+		<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+		<link rel="stylesheet" href="css/styles.css">
+
+		<!--un bout de javascript pour charger le ServiceWorker-->
+		<script>
+			if ("serviceWorker" in navigator) {
+				navigator.serviceWorker
+						.register("/sw.js")
+						.then(serviceWorker => {
+							console.log("Service Worker registered: ", serviceWorker);
+						})
+						.catch(error => {
+							console.error("Error registering the Service Worker: ", error);
+						});
+			}
+		</script>
+	</head>
+	<body  onload="brython()">
+		<header><h1>Dungeon Hamster</h1></header>
+		<main id="main_id">
+			<div class="Inv_Area">
+
+				<section class="Active_Section"><h3>Porté sur soi</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj contenteditable="true"></td>
+							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table><div id="recap_porte_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+
+				<section class="Active_Section"><input type="checkbox" checked/><h3>Bourse</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj contenteditable="true"></td>
+							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table>
+					<div id="recap_bourse_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">50</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+
+
+				<section class="Active_Section">
+					<input type="checkbox" checked/>
+					<h3>Sac à dos</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj contenteditable="true"></td>
+							<td class=Col_Enc contenteditable="true" inputmode="decimal"></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table>
+					<div id="recap_sacdos_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">400</span> + <span class="Sec_Intr">20</span> = <strong><span class="Sec_Tot">20</span>cn</strong></div>
+				</section>
+
+
+				<section class="Inactive_Section"><input type="checkbox"/><h3>Petit sac 1</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj></td>
+							<td class=Col_Enc></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table><div id="recap_petitsac1_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">200</span> + <span class="Sec_Intr">1</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+				<section class="Inactive_Section"><input type="checkbox"/><h3>Petit sac 2</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj></td>
+							<td class=Col_Enc></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table><div id="recap_petitsac2_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">200</span> + <span class="Sec_Intr">1</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+
+				<section class="Inactive_Section"><input type="checkbox"/><h3>Petit sac 3</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj></td>
+							<td class=Col_Enc></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table><div id="recap_petitsac3_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">200</span> + <span class="Sec_Intr">1</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div></section>
+
+				<section class="Inactive_Section">
+					<input type="checkbox"/>
+					<h3>Gros sac</h3>
+					<table>
+						<tr><th class=Col_Obj>Objet</th>
+							<th class=Col_Enc>Enc.</th>
+							<th class=Col_Del_Head></th></tr>
+						<tr><td class=Col_Obj></td>
+							<td class=Col_Enc></td>
+							<td class=Col_Del>✖
+							</td></tr>
+					</table>
+					<div id="recap_grossac_id" class="Sec_Recap"><strong>Total :</strong> <span class="Sec_Enc">0</span> / <span class="Sec_Max">600</span> + <span class="Sec_Intr">5</span> = <strong><span class="Sec_Tot">0</span>cn</strong></div>
+
+				</section>
+
+			</div>
+
+			<section id="main_recap_id" class="Main_Recap">
+				<div><h4>Total : </h4><em><span id="total_id">20</span>cn</em> : <strong class="result"><span id="total_byround_id">40</span></strong>'/r ; <strong class="result"><span id="total_byturn_id">120</span></strong>'/t</div>
+				<div><h4>Sans sac à dos : </h4><em><span id="sanssacdos_id">0</span>cn</em> : <strong class="result"><span id="sanssacdos_byround_id">40</span></strong>'/r ; <strong class="result"><span id="sanssacdos_byturn_id">120</span></strong>'/t</div>
+				<div><h4>Sans sacs classiques : </h4><em><span id="sanssacsclass_id">20</span>cn</em> : <strong class="result"><span id="sanssacsclass_byround_id">40</span></strong>'/r ; <strong class="result"><span id="sanssacsclass_byturn_id">120</span></strong>'/t</div>
+				<div><h4>Juste bourse et porté : </h4><em><span id="justebourseporte_id">0</span>cn</em> : <strong class="result"><span id="justebourseporte_byround_id">40</span></strong>'/r ; <strong class="result"><span id="justebourseporte_byturn_id">120</span></strong>'/t</div>
+			</section>
+		</main>
+
+		<!--script à la toute fin pour laisser la page s'afficher devant l'utilisateur-->
+		<script type="text/python" src="python/main.bry">
+		</script>
+
+	</body>
+</html>

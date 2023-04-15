@@ -5,13 +5,29 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 -->
 <html>
 	<head>
+		<!--problèmes rencontrés si manifest.json placé trop bas, ici au moins on est sûrs-->
+		<link rel="manifest" href="manifest.json">
 		<meta charset="UTF-8">
 		<script src="js/brython.js"></script>
 		<script src="js/brython_stdlib.js"></script>
 		<title>Dungeon Hamster</title>
 		<meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-		<link rel="stylesheet" href="css/hamster.css">
+		<link rel="stylesheet" href="css/styles.css">
+
+		<!--un bout de javascript pour charger le ServiceWorker-->
+		<script>
+			if ("serviceWorker" in navigator) {
+				navigator.serviceWorker
+						.register("/sw.js")
+						.then(serviceWorker => {
+							console.log("Service Worker registered: ", serviceWorker);
+						})
+						.catch(error => {
+							console.error("Error registering the Service Worker: ", error);
+						});
+			}
+		</script>
 	</head>
 	<body  onload="brython()">
 		<header><h1>Dungeon Hamster</h1></header>
@@ -117,7 +133,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 		</main>
 
 		<!--script à la toute fin pour laisser la page s'afficher devant l'utilisateur-->
-		<script type="text/python" src="python/hamster.py">
+		<script type="text/python" src="python/main.bry">
 		</script>
 
 	</body>
