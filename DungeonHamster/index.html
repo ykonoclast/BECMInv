@@ -27,6 +27,22 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 							console.error("Error registering the Service Worker: ", error);
 						});
 			}
+
+			//TODO placer cela en Brython si possible
+			if (navigator.storage && navigator.storage.persist) {
+				navigator.storage.persist().then(granted => {
+					if (granted) {
+						alert("Storage will persist and not be cleared");
+					} else {
+						alert("Storage won’t persist and may be cleared");
+					}
+				});
+			} else
+			{
+				alert("Go fuck yourself");
+			}
+
+
 		</script>
 	</head>
 	<body  onload="brython()">
