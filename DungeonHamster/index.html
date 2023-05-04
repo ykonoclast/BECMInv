@@ -15,34 +15,25 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 
 		<link rel="stylesheet" href="css/styles.css">
 
-		<!--un bout de javascript pour charger le ServiceWorker-->
+		<!--un bout de javascript utilitaire pour charger le ServiceWorker-->
 		<script>
-			if ("serviceWorker" in navigator) {
-				navigator.serviceWorker
-						.register("/sw.js")
-						.then(serviceWorker => {
-							console.log("Service Worker registered: ", serviceWorker);
-						})
-						.catch(error => {
-							console.error("Error registering the Service Worker: ", error);
-						});
-			}
-
-			//TODO placer cela en Brython si possible
-			if (navigator.storage && navigator.storage.persist) {
-				navigator.storage.persist().then(granted => {
-					if (granted) {
-						alert("Storage will persist and not be cleared");
-					} else {
-						alert("Storage won’t persist and may be cleared");
-					}
-				});
-			} else
+			async function do_register()
 			{
-				alert("Go fuck yourself");
+				try
+				{
+					const sw = await navigator.serviceWorker.register("/sw.js");
+					console.log("Service Worker registered: ", sw);
+				}
+				catch (e)
+				{
+					console.error("Error registering the Service Worker: ", e);
+				}
 			}
 
-
+			if ("serviceWorker" in navigator)
+			{
+				do_register();
+			}
 		</script>
 	</head>
 	<body  onload="brython()">

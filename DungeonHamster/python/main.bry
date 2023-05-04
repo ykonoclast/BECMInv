@@ -1,7 +1,21 @@
-from browser import document, console, window, html
+from browser import document, console, window, html, alert
 from bisect import bisect_right
 
-#TODO voir si on met tous les binds à la fin d'un seul coup ou si on les laisse répartis.
+#TODO supprimer les alertes et mieux logger
+navigator = window.navigator
+print("aligator5")
+
+def disp_persist(granted):
+	if granted:
+		alert("Storage will persist and not be cleared")
+	else:
+		alert("Storage won’t persist and may be cleared")
+
+
+if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
+	navigator.storage.persist().then(disp_persist)
+else:
+	alert("Go fuck yourself")
 
 #SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
 def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)

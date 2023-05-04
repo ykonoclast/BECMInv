@@ -10,6 +10,7 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 /*TODO variables pour ombres et autres écartements standards*/
 /*TODO classes séparées pour headers et rows des colonnes de table avec factorisation pour la width notamment*/
 
+/*TODO où est le go guck yourself???*/
 
 :root
 {
@@ -310,10 +311,7 @@ td.Col_Obj
 		--cols: 2;
 	}
 
-	.Main_Recap
-	{
-		font-size: 1.4rem;
-	}
+
 }
 
 /*seulement pour lecture à l'écran et taille doit être proche de smartphone portrait*/
@@ -323,4 +321,25 @@ td.Col_Obj
 	{
 		--cols: 1;
 	}
+
+	.Main_Recap
+	{
+		font-size: 1.25rem;
+	}
+
+	header
+	{
+		font-size:1.2rem;/*comme le reste des polices est doublé, celle du header est un peu augmentée pour rester assez grande*/
+	}
+
+	main
+	{
+		font-size:1.8rem;
+	}
+
+	input[type=checkbox]
+	{
+		transform: scale(2.2);
+	}
+
 }

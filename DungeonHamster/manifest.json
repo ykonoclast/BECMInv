@@ -19,5 +19,6 @@
 			"src": "icons/logo.png",
 			"sizes": "512x512"
 		}
-	]
+	],
+	"orientation": "any"
 }
