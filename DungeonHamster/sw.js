@@ -1,12 +1,9 @@
+//Note : le manifest.json possède comme valeur d'orientation "any" ce qui permet la roation de l'écran
+
 
 const CACHE_VERSION = "vALPHA14";//TODO aussi changer la version du cache à terme
 //Noter ci-dessous la présence de /, pas certain que ça marche avec index.html
 const LIST_PRE_CACHE = ["/", "favicon.ico", "manifest.json", "css/styles.css", "python/main.bry", "js/brython.js", "js/brython_stdlib.js", "icons/logo.png", "icons/logo192.png", "icons/logo512.png", "fonts/EBGaramond-Italic.otf", "fonts/EBGaramond-Regular.otf", "fonts/EBGaramond-SemiBold.otf"];
-//TODO ajouter manifest.json au pre-cache, vérifier que ça marche encore et commenter le fait que ça y soit
-
-
-
-//TODO check enregistrement service worker propre
 
 
 //Noter que l'on pourrait se passer du pré-cache dans la mesure où l'appli est simple : tout est donc fetché rapidement dès le début (et donc serait mis en cache ainsi). Mais pour une appli plus compliquée il faut pré-cacher les assets qui ne sont pas forcément fetchés dès le début si l'on veut plus tard y accéder hors ligne avant qu'un fetch réseau ne soit arrivé
@@ -18,7 +15,7 @@ async function pre_cache()//la fonction async attendra sur des await pendant que
 		console.log(`Pre-caching for cache ${CACHE_VERSION}...`);
 		//le couple "const" et "await" remplace ce qui se trouve respectivement après et avant le "then" en syntaxe de promise (en ce cas : caches.open(CACHE_VERSION).then(cache=>cache.addALL(LIST_PRE_CACHE))
 		const currentCache = await caches.open(CACHE_VERSION);//pas d'attente active sur l'ouverture du cache
-		currentCache.addAll(LIST_PRE_CACHE);
+		await currentCache.addAll(LIST_PRE_CACHE);
 	}
 	catch (e)
 	{
@@ -43,13 +40,13 @@ function when_install(event)
 self.addEventListener("install", when_install);
 
 
-//NOTE : cette fonction était auparavant async et le caches.delete était en await mais cela ne semblait pas nécessaire : pas de race condition sur la suppression d'une clé et pas de waituntil dans le code appelant voulant une promesse à tout prix
-function delete_single_cache(key)
+
+async function delete_single_cache(key)
 {
 	try
 	{
 		console.log(`Deleting older cache ${key}...`);
-		caches.delete(key);
+		await caches.delete(key);
 	}
 	catch (e)
 	{
@@ -77,6 +74,7 @@ async function delete_older_caches()
 function when_activate(event)
 {
 	console.log("Service Worker activating...");
+	//claim() renvoie une promise, on pourrait faire un await dessus, mais de toute façon on va faire de l'attente active juste après avec event.waitUntil
 	clients.claim(); //permet de contrôler tout de suite la page sans attendre un rechargement (n'interceptera pas les fetch avant un deuxième chargement sinon par exemple)
 	try
 	{
@@ -114,7 +112,7 @@ self.addEventListener("activate", when_activate);
  });
  */
 
-
+//fonction qui, dans cette appli, ne sera presque jamais appelée.... car on précache tout. Mais on ne sait jamais.
 async function cache_request(request, response)
 {
 	if (response.type !== "error" && response.type !== "opaque")
@@ -123,7 +121,7 @@ async function cache_request(request, response)
 		{
 			console.log(`caching url:${request.url}`);
 			const currentCache = await caches.open(CACHE_VERSION);
-			currentCache.put(request, response.clone());
+			await currentCache.put(request, response.clone());
 		}
 		catch (e)
 		{
@@ -142,7 +140,7 @@ async function fetch_response(req)
 		{//la réponse est vide : le cache ne contient pas la valeur recherchée : on va donc appeler le réseau
 			console.log(`url:${req.url} not in cache : fetching through network`);
 			response = await fetch(req);//on fetch, sans attente active
-			await cache_request(req, response);//CRUCIAL : sans cela on passe à la suite et la réponse est traitée AVANT la mise en cache (car cache_request est async! Le flot continue donc pendant ses propres await) : qui ne peut donc se faire car la réponse a déjà été consommée
+			await cache_request(req, response);//CRUCIAL : sans cela on passe à la suite et la réponse est returned, donc traitée AVANT la mise en cache (car cache_request est async! Le flot continue donc pendant ses propres await) : qui ne peut donc se faire car la réponse a déjà été consommée
 		}
 		return response;
 	}
@@ -158,14 +156,14 @@ function when_fetch(event)
 		let req = event.request;
 		console.log(`fetching url:${req.url}`);
 		if (req.url.includes("main.bry"))
-		{//cas particulier de brython qui appelle ses scripts en les postfixant d'une numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
+		{//cas particulier de brython qui appelle ses scripts en les postfixant d'un numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
 			console.log("stripping brython url");
 			const newUrl = event.request.url.split('?')[0];
 			req = new Request(newUrl, event.request);
 		}
 
 		// Cache-First Strategy : si l'appli est mise à jour, il faudra mettre à jour la version du service worker pour qu'il re-précache. Comme l'appli n'a pas BESOIN d'assets réseau (pas de données) c'est plus efficient car ça évite des fetch réseau inutiles
-		//à noter que pour une appli échangeant effectivement des données il vaudrait mieux une stratégie network first VOIRE différencier entre pages et objets json, de façon hybride
+		//à noter que pour une appli échangeant effectivement des données il vaudrait mieux une stratégie network first VOIRE différencier entre pages et objets json, de façon hybride : début de piste par ici https://pwa-workshop.js.org/fr/4-api-cache/#cache-update-refresh
 		response = fetch_response(req);
 		event.respondWith(response);
 	}
@@ -188,7 +186,6 @@ self.addEventListener("fetch", when_fetch);
  }
  console.log(`NEW URL : ${req.url}`);
  // Cache-First Strategy
- //TODO expliquer pourquoi finalement on part en cache-first
  event.respondWith(
  caches
  .match(req) // check if the request has already been cached
@@ -230,13 +227,13 @@ self.addEventListener("fetch", when_fetch);
  console.log("PRECHARGE");
  return preloadResponse;//on renvoie alors la réponse prechargee
  }
- //TODO factoriser les return
- console.log("FETCH");//TODO les console.log de cette fonction sont horribles
+ //pourri : il vaudrait mieux factoriser les return
+ console.log("FETCH");//pourri: les console.log de cette fonction sont horribles
  return await fetch(event.request);//il n'y avait pas de réponse préchargée, alors on passe le fetch au serveur en espérant qu'il y ait du réseau
  } catch (e)//pas moyen de récupérer une réponse
  {
  console.log("CACHE");
- const currentCache = await caches.open(CACHE_VERSION);//TODO factoriser
+ const currentCache = await caches.open(CACHE_VERSION);
  return await currentCache.match(event.request);
  }
  })());

@@ -7,18 +7,16 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
     Author     : ykonoclast
 */
 
-/*TODO variables pour ombres et autres écartements standards*/
-/*TODO classes séparées pour headers et rows des colonnes de table avec factorisation pour la width notamment*/
-
-/*TODO où est le go guck yourself???*/
 
 :root
 {
+	/*layout*/
 	--cols: 3;
 	--col-gap: 2vw;
 	--row-gap: 4vh;
 	/*largeur colonne = la largeur de l'écran divisée par le nombre de colonnes, ajusté par les gaps entre les colonnes */
 	--grid-column-width: calc((100% / var(--cols)) - ((var(--col-gap) * (var(--cols) - 1)) / var(--cols)) );
+	--ecart-bords: 1rem;
 
 	/*couleurs textes et fonds*/
 	--text-heavy:#c93c3c;
@@ -33,6 +31,10 @@ Click nbfs://nbhost/SystemFileSystem/Templates/ClientSide/css.css to edit this t
 	--fond-fonce-inactif:gainsboro;
 	/*ci-dessous non utilisé mais pourrait être joli avec une ombre interne de la forme : box-shadow: 0 0 25px var(--outline) inset;*/
 	/*--outline:#fbb4577e;*/
+
+	/*ombres*/
+	--blur-radius:0.2rem;
+	--shadow-offset:0.1rem;
 }
 
 @font-face
@@ -74,7 +76,7 @@ body
 
 header
 {
-	box-shadow:0 0.1rem 0.2rem var(--dark-alpha);
+	box-shadow:0 var(--shadow-offset) var(--blur-radius) var(--dark-alpha);
 	position:sticky;/*sticky va fixer en position même si scroll mais va tout de même laisser dans le flow, contrairement à fixed*/
 	top:0;/*nécessaire car sticky : doit avoir un point d'ancrage relatif au parent, avec cela ça colle en haut*/
 	font-size:1.4rem;/*comme le reste des polices est doublé, celle du header est un peu augmentée pour rester assez grande*/
@@ -85,7 +87,6 @@ main
 {
 	font-size:2rem;/*toutes polices du contenu sont doublées*/
 	z-index:1;/*on le définit ici car le z-index est par rapport au parent : si on le mettait dans les sections çá ne changerait pas la hauteur du main par rapport au header*/
-
 }
 
 /*zone avec les inventaires, dans le main*/
@@ -95,7 +96,7 @@ main
 	grid-template-columns: repeat(var(--cols), var(--grid-column-width));/*template calculé dynamiquement en fonction du nombre de colonnes et de leur écartement, lui-même calculé dynamiquement dans :root*/
 	column-gap: var(--col-gap);
 	row-gap: var(--row-gap);/*permet que ce soit petit sur PC et grand en portrait mobile (car relatif à la hauteur du viewport)*/
-	margin: 1rem;/*on écarte un peu du bord*/
+	margin: var(--ecart-bords);/*on écarte un peu du bord*/
 }
 
 h1, h3, h4
@@ -132,7 +133,7 @@ section
 	/*on padde à gauche et en bas car c'est là que les lignes de table vont percuter le bord de la section, à droite il y a la colonne semi-vide de suppression et en haut le heading et ses propres marges'*/
 	padding-left : 0.3rem;
 	padding-bottom : 0.3rem;
-	position:relative;/*on se met en relative SANS spécifier de décalage afin de ne pas être en position */
+	position:relative;/*on se met en relative SANS spécifier de décalage afin de ne pas être en position par défaut, permettant à la checkbox d'être en position absolute (qui est relative au premier parent positionné non par défaut)'*/
 }
 
 
@@ -143,12 +144,12 @@ section
 
 .Active_Section
 {
-	box-shadow: 0.1rem 0.1rem 0.2rem var(--dark-alpha);
+	box-shadow: var(--shadow-offset) var(--shadow-offset) var(--blur-radius) var(--dark-alpha);
 }
 
 .Active_Section:hover
 {
-	box-shadow: 0.1rem 0.1rem 0.2rem 0.15rem var(--dark-alpha);
+	box-shadow: var(--shadow-offset) var(--shadow-offset) var(--blur-radius) 0.15rem var(--dark-alpha);
 }
 
 .Inactive_Section
@@ -281,9 +282,10 @@ td.Col_Obj
 	display:flex;
 	flex-wrap:wrap;
 	justify-content: space-between;
-	padding-left:1rem;
-	padding-right:1rem;
-	box-shadow:0 -0.1rem 0.2rem var(--dark-alpha);
+	padding-left:var(--ecart-bords);
+	padding-right:var(--ecart-bords);
+	box-shadow:0 calc(-1 * var(--shadow-offset)) var(--blur-radius) var(--dark-alpha);
+
 	font-size: 1.8rem;
 }
 
@@ -311,25 +313,14 @@ td.Col_Obj
 		--cols: 2;
 	}
 
-
-}
-
-/*seulement pour lecture à l'écran et taille doit être proche de smartphone portrait*/
-@media only screen and (max-width: 600px)
-{
-	:root
+	header
 	{
-		--cols: 1;
+		font-size:1.2rem;
 	}
 
 	.Main_Recap
 	{
 		font-size: 1.25rem;
-	}
-
-	header
-	{
-		font-size:1.2rem;/*comme le reste des polices est doublé, celle du header est un peu augmentée pour rester assez grande*/
 	}
 
 	main
@@ -341,5 +332,15 @@ td.Col_Obj
 	{
 		transform: scale(2.2);
 	}
+}
 
+/*seulement pour lecture à l'écran et taille doit être proche de smartphone portrait*/
+@media only screen and (max-width: 600px)
+{
+	:root
+	{
+		--cols: 1;
+	}
+
+	/*tailles de polices sont héritées du bloc paysage car 600px EST <=900px*/
 }

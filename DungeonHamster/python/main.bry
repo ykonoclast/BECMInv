@@ -2,16 +2,15 @@ from browser import document, console, window, html, alert
 from bisect import bisect_right
 
 #TODO supprimer les alertes et mieux logger
-navigator = window.navigator
-print("aligator5")
 
+#SECTION : persistance des données
 def disp_persist(granted):
 	if granted:
 		alert("Storage will persist and not be cleared")
 	else:
 		alert("Storage won’t persist and may be cleared")
 
-
+navigator = window.navigator
 if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
 	navigator.storage.persist().then(disp_persist)
 else:
@@ -137,7 +136,7 @@ def update_enc(section):
 def make_new_row(tbody):
 	new_row=html.TR()
 	cell_obj=html.TD(Class="Col_Obj", contenteditable="true")
-	cell_enc=html.TD(Class="Col_Enc", contenteditable="true", inputmode="decimal")#TODO attention le type d'input est à définir aussi sinon il n'y a pas les bons claviers pour les nouvelles lignes
+	cell_enc=html.TD(Class="Col_Enc", contenteditable="true", inputmode="decimal")
 	cell_del=html.TD("✖",Class="Col_Del")
 	#on binde les mêmes listeners que pour les cellules de base
 	cell_obj.bind("input",when_obj_changed)
@@ -224,9 +223,6 @@ def when_checkbox_clicked(e):
 	sec_enc = section.getElementsByClassName("Sec_Enc")[0]
 	for td in list_td:
 		if case.checked:
-			#sec_enc.style.color=sec_tot.style.color=""
-			#TODO pourquoi la ligne ci-dessus empêche de remettre en vert/rouge plus tard?
-			#TODO et pourquoi ça marche maintenant alors que j'ai juste modifié le background? et viré la ligne avec un texte sur la présence de texte en dessous?
 			section.class_name="Active_Section"
 			if td.class_name=="Col_Del":
 				td.bind('click',when_del_clicked)
