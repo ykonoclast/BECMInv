@@ -30,10 +30,15 @@ Click nbfs://nbhost/SystemFileSystem/Templates/Other/html.html to edit this temp
 				}
 			}
 
-			if ("serviceWorker" in navigator)
+			function when_load()
 			{
-				do_register();
+				if ("serviceWorker" in navigator)
+				{
+					do_register();
+				}
 			}
+
+			window.addEventListener("load", when_load);/*on pourrait se passer de ce listener et directement enregistrer le SW, mais ainsi on surcharge moins le browser au chargement de la page*/
 		</script>
 	</head>
 	<body  onload="brython()">

@@ -1,7 +1,7 @@
 //Note : le manifest.json possède comme valeur d'orientation "any" ce qui permet la roation de l'écran
 
 
-const CACHE_VERSION = "vALPHA14";//TODO aussi changer la version du cache à terme
+const CACHE_VERSION = "vALPHA15";//TODO aussi changer la version du cache à terme
 //Noter ci-dessous la présence de /, pas certain que ça marche avec index.html
 const LIST_PRE_CACHE = ["/", "favicon.ico", "manifest.json", "css/styles.css", "python/main.bry", "js/brython.js", "js/brython_stdlib.js", "icons/logo.png", "icons/logo192.png", "icons/logo512.png", "fonts/EBGaramond-Italic.otf", "fonts/EBGaramond-Regular.otf", "fonts/EBGaramond-SemiBold.otf"];
 
