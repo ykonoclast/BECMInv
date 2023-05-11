@@ -1,9 +1,9 @@
 //Note : le manifest.json possède comme valeur d'orientation "any" ce qui permet la roation de l'écran
 
 
-const CACHE_VERSION = "vALPHA15";//TODO aussi changer la version du cache à terme
+const CACHE_VERSION = "vALPHA16";//TODO aussi changer la version du cache à terme
 //Noter ci-dessous la présence de /, pas certain que ça marche avec index.html
-const LIST_PRE_CACHE = ["/", "favicon.ico", "manifest.json", "css/styles.css", "python/main.bry", "js/brython.js", "js/brython_stdlib.js", "icons/logo.png", "icons/logo192.png", "icons/logo512.png", "fonts/EBGaramond-Italic.otf", "fonts/EBGaramond-Regular.otf", "fonts/EBGaramond-SemiBold.otf"];
+const LIST_PRE_CACHE = ["/", "favicon.ico", "manifest.json", "css/styles.css", "python/main.bry", "python/dbworker.bry", "js/brython.js", "js/brython_stdlib.js", "icons/logo.png", "icons/logo192.png", "icons/logo512.png", "fonts/EBGaramond-Italic.otf", "fonts/EBGaramond-Regular.otf", "fonts/EBGaramond-SemiBold.otf"];
 
 
 //Noter que l'on pourrait se passer du pré-cache dans la mesure où l'appli est simple : tout est donc fetché rapidement dès le début (et donc serait mis en cache ainsi). Mais pour une appli plus compliquée il faut pré-cacher les assets qui ne sont pas forcément fetchés dès le début si l'on veut plus tard y accéder hors ligne avant qu'un fetch réseau ne soit arrivé
@@ -155,12 +155,13 @@ function when_fetch(event)
 	{
 		let req = event.request;
 		console.log(`fetching url:${req.url}`);
-		if (req.url.includes("main.bry"))
-		{//cas particulier de brython qui appelle ses scripts en les postfixant d'un numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
-			console.log("stripping brython url");
-			const newUrl = event.request.url.split('?')[0];
-			req = new Request(newUrl, event.request);
-		}
+		if (req.url.includes("?"))//TODO étendre ce test à brython et sa lib aussi... enfin à tout ce qui possède un "?" au milieu en fait et tester
+				//ATTENTION!!!!!!!!!!!!!! L'appel à Brython.js semble être en lien avec le web worker : à surveiller?
+				{//cas particulier de brython qui appelle ses scripts en les postfixant d'un numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
+					console.log("stripping url of parameters");
+					const newUrl = event.request.url.split('?')[0];
+					req = new Request(newUrl, event.request);
+				}
 
 		// Cache-First Strategy : si l'appli est mise à jour, il faudra mettre à jour la version du service worker pour qu'il re-précache. Comme l'appli n'a pas BESOIN d'assets réseau (pas de données) c'est plus efficient car ça évite des fetch réseau inutiles
 		//à noter que pour une appli échangeant effectivement des données il vaudrait mieux une stratégie network first VOIRE différencier entre pages et objets json, de façon hybride : début de piste par ici https://pwa-workshop.js.org/fr/4-api-cache/#cache-update-refresh

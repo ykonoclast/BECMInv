@@ -1,10 +1,17 @@
-from browser import document, console, window, html, alert
+from browser import document, console, window, html, alert, worker,ajax
 from bisect import bisect_right
+import itertools
+
+DB_NAME="DungeonDB"
+DB_VERSION=1
+list_mvt=[{"turn": 120,"round": 40}, {"turn": 90,"round": 30}, {"turn": 60,"round": 20}, {"turn": 30,"round": 10}, {"turn": 15,	"round": 5}, {"turn": 0,"round": 0}]
+list_enc_thresh=[0, 401, 801, 1201, 1601, 2401]
+	
 
 #TODO supprimer les alertes et mieux logger
 
 #SECTION : persistance des données
-def disp_persist(granted):
+def disp_persist(granted):#TODO remplacer ces alertes de merde par des logs
 	if granted:
 		alert("Storage will persist and not be cleared")
 	else:
@@ -15,6 +22,39 @@ if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
 	navigator.storage.persist().then(disp_persist)
 else:
 	alert("Go fuck yourself")
+	
+	
+	
+	
+def upgradeDB(event):#base de données de nom inconnu ou de version n'existant pas : on construit le schéma
+	#TODO supprimer anciennes version
+	db = event.target.result
+	
+	list_active_sections = [x.id for x in document.getElementsByClassName("Active_Section")]
+	list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
+
+	for section in list_active_sections+list_inactive_sections:#on crée un store par section
+		objectStore = db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes) et avec un id technique autoconstruit
+	
+def setup_from_DB(event):
+	db = event.target.result;
+
+#Ouverture de la base de données
+if hasattr(window,"indexedDB"):
+	db = window.indexedDB.open(DB_NAME,DB_VERSION)
+	db.bind("upgradeneeded", upgradeDB)
+	db.bind("success", setup_from_DB)
+	#TODO binder aussi les erreurs
+
+
+def worker_ready(new_worker):
+	new_worker.send("zigouigoui")
+
+def worker_message(e):
+	print(e.data["round"])
+	
+worker.create_worker("dbworker", worker_ready, worker_message)
+
 
 #SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
 def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
@@ -48,11 +88,6 @@ def get_row_info(cellule):
 	return tbody, nbrows, row_index, row
 
 #SECTION gestion des valeurs numériques
-
-#TODO voir pour extraire cela en json si possible, car pure data de config
-list_mvt=[{"turn":120,"round":40},{"turn":90,"round":30},{"turn":60,"round":20},{"turn":30,"round":10},{"turn":15,"round":5},{"turn":0,"round":0}]
-list_enc_thresh=[0,401,801,1201,1601,2401]
-
 def get_speeds(enc):
 	index=bisect_right(list_enc_thresh,enc)-1#bisect_right retourne l'indice de l'élément qui devrait suivre enc si celui-ci était inséré et que la liste devait rester trier, on fait -1 et cela sélectionne donc la valeur immédiatement inférieure à enc
 	return list_mvt[index]
@@ -190,6 +225,7 @@ def validate_enc(cellule):
 	else:
 		if texte_saisi:
 			cellule.style.background="red"
+	
 	update_enc(get_section(cellule))#on appelle toujours l'update de l'enc car on peut avoir rendu non-numérique une cellule l'étant antérieurement
 
 def check_text_changed(e,is_enc_col):
