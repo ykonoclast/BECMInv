@@ -1,6 +1,6 @@
-from browser import document, console, window, html, alert, worker,ajax
+from browser import document, console, window, html, alert, worker, timer
 from bisect import bisect_right
-import itertools
+#from itertools import izip
 
 DB_NAME="DungeonDB"
 DB_VERSION=1
@@ -10,64 +10,6 @@ list_enc_thresh=[0, 401, 801, 1201, 1601, 2401]
 
 #TODO supprimer les alertes et mieux logger
 
-#SECTION : persistance des données
-def disp_persist(granted):#TODO remplacer ces alertes de merde par des logs
-	if granted:
-		alert("Storage will persist and not be cleared")
-	else:
-		alert("Storage won’t persist and may be cleared")
-
-navigator = window.navigator
-if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
-	navigator.storage.persist().then(disp_persist)
-else:
-	alert("Go fuck yourself")
-	
-	
-	
-	
-def upgradeDB(event):#base de données de nom inconnu ou de version n'existant pas : on construit le schéma
-	#TODO supprimer anciennes version
-	db = event.target.result
-	
-	list_active_sections = [x.id for x in document.getElementsByClassName("Active_Section")]
-	list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
-
-	for section in list_active_sections+list_inactive_sections:#on crée un store par section
-		objectStore = db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes) et avec un id technique autoconstruit
-	
-def setup_from_DB(event):
-	db = event.target.result;
-
-#Ouverture de la base de données
-if hasattr(window,"indexedDB"):
-	db = window.indexedDB.open(DB_NAME,DB_VERSION)
-	db.bind("upgradeneeded", upgradeDB)
-	db.bind("success", setup_from_DB)
-	#TODO binder aussi les erreurs
-
-
-def worker_ready(new_worker):
-	new_worker.send("zigouigoui")
-
-def worker_message(e):
-	print(e.data["round"])
-	
-worker.create_worker("dbworker", worker_ready, worker_message)
-
-
-#SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
-def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
-	height=document["main_recap_id"].height
-	main=document["main_id"]
-	#main prend un padding car mettre de la marge à l'Inv_Area ne marchera pas : la marge n'est calculée que si un élément suit, or la barre est fixed donc hors flux
-	#on ajoute 1rem au padding car ainsi ça décolle un peu plus
-	main.style.paddingBottom=f"calc({height}px + 1rem)"
-
-#on appelle une première fois la fonction d'écartement au chargement de la page
-set_main_padding()
-#on la binde au redimmensionnement de la fenêtre
-window.bind('resize', set_main_padding)
 
 #SECTION fonctions utilitaires
 def get_section(elt):
@@ -86,6 +28,130 @@ def get_row_info(cellule):
 	table = tbody.parent
 	nbrows=table.rows.length#TODO ne peut on passer par le tbody au lieu d'interroger la table et les rows de la table?
 	return tbody, nbrows, row_index, row
+
+
+
+
+
+
+
+
+#SECTION : persistance des données
+db = 0
+
+def disp_persist(granted):#TODO remplacer ces alertes de merde par des logs
+	if granted:
+		alert("Storage will persist and not be cleared")
+	else:
+		alert("Storage won’t persist and may be cleared")
+
+navigator = window.navigator
+if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
+	navigator.storage.persist().then(disp_persist)
+else:
+	alert("Go fuck yourself")
+	
+def upgradeDB(event):#base de données de nom inconnu ou de version n'existant pas : on construit le schéma
+	#TODO supprimer anciennes version
+	db = event.target.result#event.target est la REQUÊTE IndexedDb ; ici le résultat de la requête (d'ouverture) est la base elle-même
+
+	list_active_sections = [x.id for x in document.getElementsByClassName("Active_Section")]
+	list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
+
+	for section in list_active_sections+list_inactive_sections:#on crée un store par section
+		objectStore = db.createObjectStore(section)#store sans index (on n'interrogera jamais sur les colonnes), pas d'autoincrement ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
+
+def setup_from_DB(event):#sera forcément appelé après upgraDB car l'event success arrive toujours après le traitement de upgradeneeded
+	global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
+	db = event.target.result;
+
+#Ouverture de la base de données
+if hasattr(window,"indexedDB"):
+	dbrequest = window.indexedDB.open(DB_NAME,DB_VERSION)
+	dbrequest.bind("upgradeneeded", upgradeDB)
+	dbrequest.bind("success", setup_from_DB)
+	#TODO binder aussi les erreurs
+
+
+
+
+
+
+
+
+#NOTE : l'emploi du worker ci-dessous est inutile car IndexDB est asynchrone : les appels ne sont pas bloquants MAIS c'est pédagogique : un exemple de threading dans l'appli côté client.
+def worker_ready(new_worker):
+	new_worker.send("zigouigoui")
+
+def worker_message(e):
+	print(e.data["round"])
+	
+worker.create_worker("dbworker", worker_ready, worker_message)
+
+#gestion du timer de 5s après frappe d'une touche dans un champ pour limiter les appels BD
+def when_typing_done(cellule):
+	tbody,nbrows,index,row=get_row_info(cellule)
+	section = get_section(cellule)
+	sec_id = section.id
+
+
+
+	if db!=0:#la requête d'ouverture est passée
+		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
+		store = transaction.objectStore(sec_id)
+
+		#création du paquet de données à persister
+		obj_cell = row.getElementsByClassName("Col_Obj")[0]
+		obj_text = obj_cell.text
+		enc_cell = row.getElementsByClassName("Col_Enc")[0]
+		enc_text = enc_cell.text
+		data = {"obj": obj_text,"enc": enc_text}
+
+		#on écrit en base, put ajoute si clé (index du row) non existante, update sinon
+		console.log(f"writing in DB {data} with key {index} in store {sec_id}")
+		store.put(data, index)#TODO binder callback de succès et échec pour log
+
+
+#list_enc_text = [x.text for x in list_enc]
+#list_obj=section.getElementsByClassName("Col_Obj")
+#list_obj_text = [x.text for x in list_obj]
+#resync_store(section.id, list_obj_text[1:-1],list_enc_text[1:-1])#on ne passe pas le premier row (étiquettes) ni le dernier : il est toujours vide par construction
+
+#var req = objectStore.openCursor(key);
+#req.onsuccess = function(e) {
+#  var cursor = e.target.result;
+#  if (cursor) { // key already exist
+#     cursor.update(obj);
+#  } else { // key not exist
+#     objectStore.add(obj)
+#  }
+#};
+
+
+
+
+typing_timer = 0
+typing_interval = 3000
+
+def when_keyup(e):
+	global typing_timer #sinon ce sera une variable locale pour la modification!
+	timer.clear_timeout(typing_timer)
+	typing_timer = timer.set_timeout(when_typing_done, typing_interval, e.target)
+
+
+
+#SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
+def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
+	height=document["main_recap_id"].height
+	main=document["main_id"]
+	#main prend un padding car mettre de la marge à l'Inv_Area ne marchera pas : la marge n'est calculée que si un élément suit, or la barre est fixed donc hors flux
+	#on ajoute 1rem au padding car ainsi ça décolle un peu plus
+	main.style.paddingBottom=f"calc({height}px + 1rem)"
+
+#on appelle une première fois la fonction d'écartement au chargement de la page
+set_main_padding()
+#on la binde au redimmensionnement de la fenêtre
+window.bind('resize', set_main_padding)
 
 #SECTION gestion des valeurs numériques
 def get_speeds(enc):
@@ -245,10 +311,12 @@ def when_enc_changed(e):
 list_col_enc=document.getElementsByClassName("Col_Enc")
 for i in list_col_enc:
 	i.bind("input",when_enc_changed)
+	i.bind("keyup",when_keyup)
 
 list_col_obj=document.getElementsByClassName("Col_Obj")
 for i in list_col_obj:
 	i.bind("input",when_obj_changed)
+	i.bind("keyup",when_keyup)
 
 #SECTION Gestion de l'activation/inactivation des sections
 def when_checkbox_clicked(e):
