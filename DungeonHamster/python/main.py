@@ -59,7 +59,7 @@ def upgradeDB(event):#base de données de nom inconnu ou de version n'existant p
 	list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
 
 	for section in list_active_sections+list_inactive_sections:#on crée un store par section
-		objectStore = db.createObjectStore(section)#store sans index (on n'interrogera jamais sur les colonnes), pas d'autoincrement ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
+		objectStore = db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
 
 def setup_from_DB(event):#sera forcément appelé après upgraDB car l'event success arrive toujours après le traitement de upgradeneeded
 	global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
@@ -72,12 +72,22 @@ if hasattr(window,"indexedDB"):
 	dbrequest.bind("success", setup_from_DB)
 	#TODO binder aussi les erreurs
 
+def del_row_db(sec_id,index):
+	if db!=0:#la requête d'ouverture est passée
+		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
+		store = transaction.objectStore(sec_id)
+		console.log(f"erasing in DB key {index} in store {sec_id}")
+		store.delete(index)#TODO binder callback de succès et échec pour log
 
 
 
 
 
 
+
+
+
+#gestion du timer de 5s après frappe d'une touche dans un champ pour limiter les appels BD
 
 #NOTE : l'emploi du worker ci-dessous est inutile car IndexDB est asynchrone : les appels ne sont pas bloquants MAIS c'est pédagogique : un exemple de threading dans l'appli côté client.
 def worker_ready(new_worker):
@@ -88,13 +98,16 @@ def worker_message(e):
 	
 worker.create_worker("dbworker", worker_ready, worker_message)
 
-#gestion du timer de 5s après frappe d'une touche dans un champ pour limiter les appels BD
+#TODO commenter et expliquer ce que l'on fait ici
+def write_key_in_row(e):
+	console.log(f"in wkir e={e}")
+	row = e.target.row_persisted
+	row.dbkey = e.target.result
+
 def when_typing_done(cellule):
 	tbody,nbrows,index,row=get_row_info(cellule)
 	section = get_section(cellule)
 	sec_id = section.id
-
-
 
 	if db!=0:#la requête d'ouverture est passée
 		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
@@ -107,28 +120,14 @@ def when_typing_done(cellule):
 		enc_text = enc_cell.text
 		data = {"obj": obj_text,"enc": enc_text}
 
-		#on écrit en base, put ajoute si clé (index du row) non existante, update sinon
-		console.log(f"writing in DB {data} with key {index} in store {sec_id}")
-		store.put(data, index)#TODO binder callback de succès et échec pour log
-
-
-#list_enc_text = [x.text for x in list_enc]
-#list_obj=section.getElementsByClassName("Col_Obj")
-#list_obj_text = [x.text for x in list_obj]
-#resync_store(section.id, list_obj_text[1:-1],list_enc_text[1:-1])#on ne passe pas le premier row (étiquettes) ni le dernier : il est toujours vide par construction
-
-#var req = objectStore.openCursor(key);
-#req.onsuccess = function(e) {
-#  var cursor = e.target.result;
-#  if (cursor) { // key already exist
-#     cursor.update(obj);
-#  } else { // key not exist
-#     objectStore.add(obj)
-#  }
-#};
-
-
-
+		if hasattr(row,"dbkey"):#le row est déjà persisté, on update
+			console.log(f"updating in DB {data} in store {sec_id} with key {row.dbkey}")
+			store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
+		else:#le row n'a jamais été persisté, on ajoute
+			console.log(f"adding in DB {data} in store {sec_id}")
+			req = store.add(data)#TODO binder callback d'échec pour log et logger plus celle de succès
+			req.row_persisted = row #on ajoute à la requête un attribut : le row comme cela la clé générée pourra y être inscrite
+			req.bind("success", write_key_in_row)
 
 typing_timer = 0
 typing_interval = 3000
@@ -241,7 +240,9 @@ def make_new_row(tbody):
 	cell_del=html.TD("✖",Class="Col_Del")
 	#on binde les mêmes listeners que pour les cellules de base
 	cell_obj.bind("input",when_obj_changed)
+	cell_obj.bind("keyup",when_keyup)
 	cell_enc.bind("input",when_enc_changed)
+	cell_enc.bind("keyup",when_keyup)
 	cell_del.bind('click',when_del_clicked)
 	new_row.appendChild(cell_obj)
 	new_row.appendChild(cell_enc)
@@ -256,6 +257,7 @@ def del_row(cellule):
 		#TODO voir si on peut tout de même pas THEAD et modifier alors ces valeurs d'index (avec tbody plutôt que table dans le css)
 		make_new_row(tbody)
 	update_enc(section)
+	del_row_db(section.id,index)
 
 def check_row_todel(cellule, is_enc_col):
 	row=cellule.parent
