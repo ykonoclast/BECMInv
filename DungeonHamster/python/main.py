@@ -1,9 +1,14 @@
-from browser import document, console, window, html, alert, worker, timer
+from browser import document, console, window, html, alert, worker
 from bisect import bisect_right
+from queue import Queue
+
 #from itertools import izip
 
+#TODO ajouter en var globales les noms de classes css en cas de changement
 DB_NAME="DungeonDB"
 DB_VERSION=1
+MSG_RESTART="restart"
+#TODO : ci-dessous voir si namedtuples pas meilleur
 list_mvt=[{"turn": 120,"round": 40}, {"turn": 90,"round": 30}, {"turn": 60,"round": 20}, {"turn": 30,"round": 10}, {"turn": 15,	"round": 5}, {"turn": 0,"round": 0}]
 list_enc_thresh=[0, 401, 801, 1201, 1601, 2401]
 	
@@ -89,14 +94,7 @@ def del_row_db(sec_id,index):
 
 #gestion du timer de 5s après frappe d'une touche dans un champ pour limiter les appels BD
 
-#NOTE : l'emploi du worker ci-dessous est inutile car IndexDB est asynchrone : les appels ne sont pas bloquants MAIS c'est pédagogique : un exemple de threading dans l'appli côté client.
-def worker_ready(new_worker):
-	new_worker.send("zigouigoui")
 
-def worker_message(e):
-	print(e.data["round"])
-	
-worker.create_worker("dbworker", worker_ready, worker_message)
 
 #TODO commenter et expliquer ce que l'on fait ici
 def write_key_in_row(e):
@@ -104,38 +102,115 @@ def write_key_in_row(e):
 	row = e.target.row_persisted
 	row.dbkey = e.target.result
 
-def when_typing_done(cellule):
-	tbody,nbrows,index,row=get_row_info(cellule)
-	section = get_section(cellule)
-	sec_id = section.id
+def create_datapack(row):
+	obj_cell = row.getElementsByClassName("Col_Obj")[0]
+	obj_text = obj_cell.text
+	enc_cell = row.getElementsByClassName("Col_Enc")[0]
+	enc_text = enc_cell.text
+	data = {"obj": obj_text,"enc": enc_text}
+	return data
+
+def when_typing_done(row_desc):
+	#tbody,nbrows,index,row=get_row_info(cellule)
+	#section = get_section(cellule)
+	#sec_id = section.id
+
+	console.log("TYPING DONE")
+
+	sec_id = row_desc["section"]
+	console.log("TYPING DONE :data accessed")
+	#TODO : retrouver info du row!!!!!!
+
 
 	if db!=0:#la requête d'ouverture est passée
 		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
 		store = transaction.objectStore(sec_id)
+		store.put("UPDATE",row_desc["dbkey"])
 
-		#création du paquet de données à persister
-		obj_cell = row.getElementsByClassName("Col_Obj")[0]
-		obj_text = obj_cell.text
-		enc_cell = row.getElementsByClassName("Col_Enc")[0]
-		enc_text = enc_cell.text
-		data = {"obj": obj_text,"enc": enc_text}
+		#TODO DECOMMENTER!!!!
+		#data = create_datapack(row)
 
-		if hasattr(row,"dbkey"):#le row est déjà persisté, on update
-			console.log(f"updating in DB {data} in store {sec_id} with key {row.dbkey}")
-			store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
-		else:#le row n'a jamais été persisté, on ajoute
-			console.log(f"adding in DB {data} in store {sec_id}")
-			req = store.add(data)#TODO binder callback d'échec pour log et logger plus celle de succès
-			req.row_persisted = row #on ajoute à la requête un attribut : le row comme cela la clé générée pourra y être inscrite
-			req.bind("success", write_key_in_row)
+		#if hasattr(row,"dbkey"):#le row est déjà persisté, on update
+		#	console.log(f"updating in DB {data} in store {sec_id} with key {row.dbkey}")
+		#	store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
+		#else:#le row n'a jamais été persisté, on ajoute
+		#	console.log(f"adding in DB {data} in store {sec_id}")
+		#	req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
+		#	req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
+		#	req.bind("success", write_key_in_row)
 
-typing_timer = 0
-typing_interval = 3000
+
+worker_dict = {}
+worker_queue = Queue()
+
+#TODO commenter la procédure d'enregistrement
+def worker_ready(new_worker):
+	row_desc=worker_queue.get()
+	new_worker.send(row_desc)
+	sec_id = row_desc["section"]
+	dbkey =row_desc["dbkey"]
+
+	if sec_id not in worker_dict:#la section ne possède aucun row avec worker actif
+		dict_entry = {row_desc["dbkey"]:new_worker}
+		worker_dict[sec_id]=dict_entry
+	else:#la section est déjà dans le dico
+		worker_dict[sec_id][dbkey]=new_worker
+	print("WORKER REGISTERED")
+	print(worker_dict)
+
+def worker_message(msg):
+	console.log("worker CALLBACK")
+	row_desc=msg.data
+	console.log("worker CALLBACK : data collected")
+	sec_id=row_desc["section"]
+	dbkey=row_desc["dbkey"]
+	console.log(f"worker CALLBACK : date is : section:{sec_id};key:{dbkey}")
+	#on supprime le worker du dictionnaire des workers actifs
+	print("BEFORE POP")
+	print(worker_dict)
+	if sec_id in worker_dict:
+		if dbkey in worker_dict[sec_id]:
+			#on fait tous les tests ci-dessus car, si l'utilisateur tape très vite, il peut y avoir plusieurs workers démarrés ou plusieurs timers lancés
+			worker_dict[sec_id].pop(dbkey)
+	console.log("worker CALLBACK : worker poped")
+	when_typing_done(row_desc)
+	#TODO supprimer le worker du dictionnaire, IMPORTANt : supprimer la section si dernier row
+
+
+
+
 
 def when_keyup(e):
-	global typing_timer #sinon ce sera une variable locale pour la modification!
-	timer.clear_timeout(typing_timer)
-	typing_timer = timer.set_timeout(when_typing_done, typing_interval, e.target)
+	cellule = e.target
+	section = get_section(cellule)
+	sec_id = section.id
+	tbody,nbrows,index,row=get_row_info(cellule)
+
+	if db!=0:#la requête d'ouverture est passée
+		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
+		store = transaction.objectStore(sec_id)
+		if hasattr(row,"dbkey"):#le row a déjà été historisé
+			dbkey = row.dbkey
+			create_worker=True
+			if sec_id in worker_dict:#on a déjà historisé des row de cette section
+				if dbkey in worker_dict[sec_id]:#le row possède un worker actif : on relance le timer
+					timer_worker = worker_dict[sec_id][dbkey]
+					console.log("ENVOI MSG RESTART")
+					timer_worker.send(MSG_RESTART)
+					create_worker=False
+
+			if create_worker:#pas de worker actif, on le crée
+				row_desc={"section":sec_id,"dbkey":dbkey}#TODO faire un namedtuple plutôt ici
+				worker_queue.put(row_desc)
+				console.log("CREATION WORKER")
+				worker.create_worker("timerworker", worker_ready, worker_message)
+
+		else:#le row n'a jamais été historisé, on va le créer pour avoir une clé
+			data = create_datapack(row)
+			console.log(f"adding in DB {data} in store {sec_id}")
+			req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
+			req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
+			req.bind("success", write_key_in_row)
 
 
 

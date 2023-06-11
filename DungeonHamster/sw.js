@@ -1,9 +1,9 @@
 //Note : le manifest.json possède comme valeur d'orientation "any" ce qui permet la roation de l'écran
 
 
-const CACHE_VERSION = "vALPHA17";//TODO aussi changer la version du cache à terme
+const CACHE_VERSION = "vALPHA18";//TODO aussi changer la version du cache à terme
 //Noter ci-dessous la présence de /, pas certain que ça marche avec index.html
-const LIST_PRE_CACHE = ["/", "favicon.ico", "manifest.json", "css/styles.css", "python/main.py", "python/dbworker.py", "js/brython.js", "js/brython_stdlib.js", "icons/logo.png", "icons/logo192.png", "icons/logo512.png", "fonts/EBGaramond-Italic.otf", "fonts/EBGaramond-Regular.otf", "fonts/EBGaramond-SemiBold.otf"];
+const LIST_PRE_CACHE = ["/", "favicon.ico", "manifest.json", "css/styles.css", "python/main.py", "python/timerworker.py", "js/brython.js", "js/brython_stdlib.js", "icons/logo.png", "icons/logo192.png", "icons/logo512.png", "fonts/EBGaramond-Italic.otf", "fonts/EBGaramond-Regular.otf", "fonts/EBGaramond-SemiBold.otf"];
 
 
 //Noter que l'on pourrait se passer du pré-cache dans la mesure où l'appli est simple : tout est donc fetché rapidement dès le début (et donc serait mis en cache ainsi). Mais pour une appli plus compliquée il faut pré-cacher les assets qui ne sont pas forcément fetchés dès le début si l'on veut plus tard y accéder hors ligne avant qu'un fetch réseau ne soit arrivé
