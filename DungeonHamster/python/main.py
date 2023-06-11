@@ -1,6 +1,7 @@
 from browser import document, console, window, html, alert, worker
 from bisect import bisect_right
 from queue import Queue
+import javascript
 
 #from itertools import izip
 
@@ -11,7 +12,9 @@ MSG_RESTART="restart"
 #TODO : ci-dessous voir si namedtuples pas meilleur
 list_mvt=[{"turn": 120,"round": 40}, {"turn": 90,"round": 30}, {"turn": 60,"round": 20}, {"turn": 30,"round": 10}, {"turn": 15,	"round": 5}, {"turn": 0,"round": 0}]
 list_enc_thresh=[0, 401, 801, 1201, 1601, 2401]
-	
+
+list_active_sections = [x.id for x in document.getElementsByClassName("Active_Section")]
+list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
 
 #TODO supprimer les alertes et mieux logger
 
@@ -60,9 +63,6 @@ def upgradeDB(event):#base de données de nom inconnu ou de version n'existant p
 	#TODO supprimer anciennes version
 	db = event.target.result#event.target est la REQUÊTE IndexedDb ; ici le résultat de la requête (d'ouverture) est la base elle-même
 
-	list_active_sections = [x.id for x in document.getElementsByClassName("Active_Section")]
-	list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
-
 	for section in list_active_sections+list_inactive_sections:#on crée un store par section
 		objectStore = db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
 
@@ -74,6 +74,16 @@ def open_db(withVersion):
 	dbrequest.bind("upgradeneeded", upgradeDB)
 	dbrequest.bind("success", when_db_opened)
 
+def restore_section(e):
+	sec_id = e.target.sec_id
+	result = e.target.result
+	for r in result:
+		dicti=javascript.JSObject.to_dict(r)
+		console.log(f"RESTORE : {dicti}")
+
+
+
+
 def when_db_opened(event):#sera forcément appelé après upgraDB car l'event success arrive toujours après le traitement de upgradeneeded
 	version = event.target.result.version
 
@@ -84,6 +94,14 @@ def when_db_opened(event):#sera forcément appelé après upgraDB car l'event su
 	else :#setup from DB
 		global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
 		db = event.target.result;
+		#const objectStore = db.transaction("customers").objectStore("customers")
+		transaction = db.transaction(list_active_sections,"readonly")
+		for section in list_active_sections:
+			console.log(f"OPENING STORE {section}")
+			store = transaction.objectStore(section)
+			strequest = store.getAll()
+			strequest.sec_id=section
+			strequest.bind("success",restore_section)
 
 
 
