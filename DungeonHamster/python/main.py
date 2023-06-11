@@ -66,23 +66,50 @@ def upgradeDB(event):#base de données de nom inconnu ou de version n'existant p
 	for section in list_active_sections+list_inactive_sections:#on crée un store par section
 		objectStore = db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
 
-def setup_from_DB(event):#sera forcément appelé après upgraDB car l'event success arrive toujours après le traitement de upgradeneeded
-	global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
-	db = event.target.result;
+def open_db(withVersion):
+	if withVersion:
+		dbrequest = window.indexedDB.open(DB_NAME,DB_VERSION)
+	else:
+		dbrequest = window.indexedDB.open(DB_NAME)
+	dbrequest.bind("upgradeneeded", upgradeDB)
+	dbrequest.bind("success", when_db_opened)
+
+def when_db_opened(event):#sera forcément appelé après upgraDB car l'event success arrive toujours après le traitement de upgradeneeded
+	version = event.target.result.version
+
+	if version != DB_VERSION:#TODO commenter plus, mais en gros c'est la vieille version et on la supprime
+		event.target.result.close()
+		window.indexedDB.deleteDatabase(DB_NAME)
+		open_db(True)
+	else :#setup from DB
+		global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
+		db = event.target.result;
+
+
+
+
+
+
+
 
 #Ouverture de la base de données
 if hasattr(window,"indexedDB"):
-	dbrequest = window.indexedDB.open(DB_NAME,DB_VERSION)
-	dbrequest.bind("upgradeneeded", upgradeDB)
-	dbrequest.bind("success", setup_from_DB)
-	#TODO binder aussi les erreurs
+	open_db(False)#TODO commenter pourquoi le false et la méthode appelée
 
-def del_row_db(sec_id,index):
+
+
+
+
+
+
+
+
+def del_row_db(sec_id,dbkey):
 	if db!=0:#la requête d'ouverture est passée
 		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
 		store = transaction.objectStore(sec_id)
-		console.log(f"erasing in DB key {index} in store {sec_id}")
-		store.delete(index)#TODO binder callback de succès et échec pour log
+		console.log(f"erasing in DB key {dbkey} in store {sec_id}")
+		store.delete(dbkey)#TODO binder callback de succès et échec pour log
 
 
 
@@ -115,20 +142,31 @@ def when_typing_done(row_desc):
 	#section = get_section(cellule)
 	#sec_id = section.id
 
-	console.log("TYPING DONE")
 
 	sec_id = row_desc["section"]
-	console.log("TYPING DONE :data accessed")
-	#TODO : retrouver info du row!!!!!!
+	dbkey=row_desc["dbkey"]
+
+	section = document[sec_id]
+	rows = section.getElementsByTagName("TR")
+	row=0
+	for r in rows:
+		if hasattr(r,"dbkey"):#un row persisté
+			if r.dbkey==dbkey:
+				row=r
+
+	if row!=0:#le row dont le timer vient d'expirer est toujours bien là
+		if db!=0:#la requête d'ouverture est passée
+			data = create_datapack(row)
+			console.log(f"updating in DB {data} in store {sec_id} with key {dbkey}")
+			transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
+			store = transaction.objectStore(sec_id)
+			store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
 
 
-	if db!=0:#la requête d'ouverture est passée
-		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
-		store = transaction.objectStore(sec_id)
-		store.put("UPDATE",row_desc["dbkey"])
+
 
 		#TODO DECOMMENTER!!!!
-		#data = create_datapack(row)
+		#
 
 		#if hasattr(row,"dbkey"):#le row est déjà persisté, on update
 		#	console.log(f"updating in DB {data} in store {sec_id} with key {row.dbkey}")
@@ -145,7 +183,7 @@ worker_queue = Queue()
 
 #TODO commenter la procédure d'enregistrement
 def worker_ready(new_worker):
-	#TODO ajouter un test ci-dessous pour ne pas attendre si queue vide peut-être? En même temps on ne vient ici QUE si un worker a démarré....
+	#TODO cracher une ERREUR si la queue ne possède pas un machin
 	row_desc=worker_queue.get()
 	new_worker.send(row_desc)
 	sec_id = row_desc["section"]
@@ -168,7 +206,7 @@ def worker_message(msg):
 			#on fait tous les tests ci-dessus car, si l'utilisateur tape très vite, il peut y avoir plusieurs workers démarrés ou plusieurs timers lancés
 			worker_dict[sec_id].pop(dbkey)
 	when_typing_done(row_desc)
-	#TODO supprimer le worker du dictionnaire, IMPORTANt : supprimer la section si dernier row
+
 
 
 
@@ -336,7 +374,9 @@ def del_row(cellule):
 		#TODO voir si on peut tout de même pas THEAD et modifier alors ces valeurs d'index (avec tbody plutôt que table dans le css)
 		make_new_row(tbody)
 	update_enc(section)
-	del_row_db(section.id,index)
+
+	if hasattr(row, "dbkey"):#le row est persisté, il faut le supprimer de la base
+		del_row_db(section.id, row.dbkey)
 
 def check_row_todel(cellule, is_enc_col):
 	row=cellule.parent

@@ -1,7 +1,7 @@
 from browser import self, console, timer
 
 typing_timer = 0
-typing_interval = 3000
+typing_interval = 2000
 row_desc=0
 MSG_RESTART="restart"
 
