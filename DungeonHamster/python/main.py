@@ -44,6 +44,10 @@ def get_row_info(cellule):
 
 
 
+
+
+
+
 #SECTION : persistance des données
 db = 0
 
@@ -76,10 +80,53 @@ def open_db(withVersion):
 
 def restore_section(e):
 	sec_id = e.target.sec_id
-	result = e.target.result
-	for r in result:
-		dicti=javascript.JSObject.to_dict(r)
-		console.log(f"RESTORE : {dicti}")
+	section=document[sec_id]
+	list_tbody=section.getElementsByTagName("TBODY")
+	tbody=list_tbody[0]
+
+	store_content = e.target.result
+
+
+##########
+	if store_content:
+		if section.class_name=="Inactive_Section":
+			listcases = section.getElementsByTagName("INPUT")
+			case=listcases[0]
+			case.setAttribute("checked", True)
+			flip_section(case)
+		dbkey=store_content.key
+		rowdata=javascript.JSObject.to_dict(store_content.value)
+		console.log(f"IN RESTORE: key={dbkey} value={rowdata}")
+
+		list_tr=tbody.getElementsByTagName("TR")
+		lastrow=list_tr[-1]
+		lastrow.dbkey=dbkey
+		obj_cell = lastrow.getElementsByClassName("Col_Obj")[0]
+		obj_cell.text = rowdata["obj"]
+		enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
+		enc_cell.text=rowdata["enc"]
+		validate_enc(enc_cell)
+
+
+
+		cont = getattr(store_content, "continue")
+		cont()
+
+	#for r in store_content:
+	#	rowdata=javascript.JSObject.to_dict(r)
+	#	console.log(f"RESTORE : {rowdata}")
+	#	list_tr=tbody.getElementsByTagName("TR")
+	#	lastrow=list_tr[-1]
+	#	obj_cell = lastrow.getElementsByClassName("Col_Obj")[0]
+	#	obj_cell.text = rowdata["obj"]
+	#	enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
+	#	enc_cell.text=rowdata["enc"]
+	#	validate_enc(enc_cell)
+
+
+
+
+
 
 
 
@@ -95,11 +142,14 @@ def when_db_opened(event):#sera forcément appelé après upgraDB car l'event su
 		global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
 		db = event.target.result;
 		#const objectStore = db.transaction("customers").objectStore("customers")
-		transaction = db.transaction(list_active_sections,"readonly")
-		for section in list_active_sections:
+		transaction = db.transaction(list_active_sections+list_inactive_sections,"readonly")
+		for section in list_active_sections+list_inactive_sections:
 			console.log(f"OPENING STORE {section}")
 			store = transaction.objectStore(section)
-			strequest = store.getAll()
+			#strequest = store.getAll()
+			strequest = store.openCursor()
+
+
 			strequest.sec_id=section
 			strequest.bind("success",restore_section)
 
@@ -182,20 +232,6 @@ def when_typing_done(row_desc):
 
 
 
-
-		#TODO DECOMMENTER!!!!
-		#
-
-		#if hasattr(row,"dbkey"):#le row est déjà persisté, on update
-		#	console.log(f"updating in DB {data} in store {sec_id} with key {row.dbkey}")
-		#	store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
-		#else:#le row n'a jamais été persisté, on ajoute
-		#	console.log(f"adding in DB {data} in store {sec_id}")
-		#	req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
-		#	req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
-		#	req.bind("success", write_key_in_row)
-
-
 worker_dict = {}#TODO initialiser avec la liste des section et mutualiser le code avec la création de la base (ATTENTION : pas initialiser au même endroit car on ne maîtrise pas le temps de création de la base)
 worker_queue = Queue()
 
@@ -240,7 +276,7 @@ def when_keyup(e):
 	if db!=0:#la requête d'ouverture est passée
 		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
 		store = transaction.objectStore(sec_id)
-		if hasattr(row,"dbkey"):#le row a déjà été historisé
+		if hasattr(row,"dbkey"):#le row a déjà été persisté
 			dbkey = row.dbkey
 			create_worker=True
 
@@ -265,12 +301,28 @@ def when_keyup(e):
 				else:#la section est déjà dans le dico
 					worker_dict[sec_id][dbkey]=0
 
-		else:#le row n'a jamais été historisé, on va le créer pour avoir une clé
+		else:#le row n'a jamais été persisté, on va le créer pour avoir une clé
 			data = create_datapack(row)
 			console.log(f"adding in DB {data} in store {sec_id}")
 			req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
 			req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
 			req.bind("success", write_key_in_row)
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -460,6 +512,9 @@ for i in list_col_obj:
 #SECTION Gestion de l'activation/inactivation des sections
 def when_checkbox_clicked(e):
 	case=e.target
+	flip_section(case)
+
+def flip_section(case):
 	section=get_section(case)
 	list_td=section.getElementsByTagName("TD")
 	sec_tot = section.getElementsByClassName("Sec_Tot")[0]
