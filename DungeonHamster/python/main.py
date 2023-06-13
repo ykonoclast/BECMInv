@@ -92,12 +92,6 @@ def restore_section(e):
 	store_content = e.target.result
 
 	if store_content:
-		if section.class_name=="Inactive_Section":
-			listcases = section.getElementsByTagName("INPUT")
-			case=listcases[0]
-			case.setAttribute("checked", True)
-			flip_section(case)
-
 		if sec_id in wasnum:
 			if not wasnum[sec_id]:
 				make_new_row(tbody)
@@ -122,6 +116,34 @@ def restore_section(e):
 
 		cont = getattr(store_content, "continue")
 		cont()
+	else:#on a fini de remplir la section, on restaure maintenant son état activé ou non
+		print(f"store:{sec_id} EMPTY")
+		transaction = db.transaction(DB_SEC_STORE,"readonly")
+		store = transaction.objectStore(DB_SEC_STORE)
+		countreq = store.count(sec_id)
+
+		def check_section_status(e):
+			keycount = e.target.result
+			if keycount>0:
+				checkedreq=store.get(sec_id)
+				def restore_section_status(e):
+					checked = e.target.result
+					print(f"keycount {sec_id}:{keycount} value:{checked}")
+					listcases = section.getElementsByTagName("INPUT")
+					case=listcases[0]
+					if checked:
+						case.setAttribute("checked", "true")
+					else:
+						case.removeAttribute("checked")
+					flip_section(case)
+
+				checkedreq.bind("success",restore_section_status)
+		countreq.bind("success",check_section_status)
+
+
+
+
+
 
 	#for r in store_content:
 	#	rowdata=javascript.JSObject.to_dict(r)
@@ -529,6 +551,7 @@ def flip_section(case):
 	list_td=section.getElementsByTagName("TD")
 	sec_tot = section.getElementsByClassName("Sec_Tot")[0]
 	sec_enc = section.getElementsByClassName("Sec_Enc")[0]
+	print(f"section:{section.id} case status :{case.checked}")
 	for td in list_td:
 		if case.checked:
 			section.class_name="Active_Section"
