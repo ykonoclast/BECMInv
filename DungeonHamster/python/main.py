@@ -8,6 +8,7 @@ import javascript
 #TODO ajouter en var globales les noms de classes css en cas de changement
 DB_NAME="DungeonDB"
 DB_VERSION=1
+DB_SEC_STORE="in-act_sections"
 MSG_RESTART="restart"
 #TODO : ci-dessous voir si namedtuples pas meilleur
 list_mvt=[{"turn": 120,"round": 40}, {"turn": 90,"round": 30}, {"turn": 60,"round": 20}, {"turn": 30,"round": 10}, {"turn": 15,	"round": 5}, {"turn": 0,"round": 0}]
@@ -68,7 +69,9 @@ def upgradeDB(event):#base de données de nom inconnu ou de version n'existant p
 	db = event.target.result#event.target est la REQUÊTE IndexedDb ; ici le résultat de la requête (d'ouverture) est la base elle-même
 
 	for section in list_active_sections+list_inactive_sections:#on crée un store par section
-		objectStore = db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
+		db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
+	db.createObjectStore(DB_SEC_STORE)#pas de clé autogénérée : les id de section sont uniques
+
 
 def open_db(withVersion):
 	if withVersion:
@@ -78,26 +81,30 @@ def open_db(withVersion):
 	dbrequest.bind("upgradeneeded", upgradeDB)
 	dbrequest.bind("success", when_db_opened)
 
+wasnum={}
+
 def restore_section(e):
+	global wasnum
 	sec_id = e.target.sec_id
 	section=document[sec_id]
 	list_tbody=section.getElementsByTagName("TBODY")
 	tbody=list_tbody[0]
-
 	store_content = e.target.result
 
-
-##########
 	if store_content:
 		if section.class_name=="Inactive_Section":
 			listcases = section.getElementsByTagName("INPUT")
 			case=listcases[0]
 			case.setAttribute("checked", True)
 			flip_section(case)
+
+		if sec_id in wasnum:
+			if not wasnum[sec_id]:
+				make_new_row(tbody)
+
 		dbkey=store_content.key
 		rowdata=javascript.JSObject.to_dict(store_content.value)
 		console.log(f"IN RESTORE: key={dbkey} value={rowdata}")
-
 		list_tr=tbody.getElementsByTagName("TR")
 		lastrow=list_tr[-1]
 		lastrow.dbkey=dbkey
@@ -107,7 +114,11 @@ def restore_section(e):
 		enc_cell.text=rowdata["enc"]
 		validate_enc(enc_cell)
 
-
+		text_check=enc_cell.text
+		if text_check.isnumeric():
+			wasnum[sec_id]=True
+		else:
+			wasnum[sec_id]=False
 
 		cont = getattr(store_content, "continue")
 		cont()
@@ -307,7 +318,6 @@ def when_keyup(e):
 			req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
 			req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
 			req.bind("success", write_key_in_row)
-
 
 
 
@@ -542,6 +552,10 @@ def flip_section(case):
 			#neutralisation de l'encombrement
 			sec_tot.text=0
 			update_main_recap()
+	#persistance en base
+	transaction = db.transaction(DB_SEC_STORE,"readwrite")#on limite la transaction au store d'intérêt pour pers
+	store = transaction.objectStore(DB_SEC_STORE)
+	store.put(case.checked,section.id)#exceptions/échec toussa
 
 
 list_checkboxes=document.getElementsByTagName("INPUT")
