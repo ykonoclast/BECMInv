@@ -19,9 +19,6 @@ list_active_sections = [x.id for x in document.getElementsByClassName("Active_Se
 list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
 list_all_sections =list_active_sections+list_inactive_sections
 
-#TODO supprimer les alertes et mieux logger
-
-
 #SECTION fonctions utilitaires
 def get_section(elt):
 	name=""
@@ -29,7 +26,6 @@ def get_section(elt):
 	while name != "SECTION":
 		current_node=current_node.parent
 		name=current_node.nodeName
-	#TODO exception : si pas dans section
 	return current_node
 
 def get_row_info(cellule):
@@ -40,19 +36,19 @@ def get_row_info(cellule):
 	nbrows=table.rows.length#TODO ne peut on passer par le tbody au lieu d'interroger la table et les rows de la table?
 	return tbody, nbrows, row_index, row
 
-
 #SECTION : persistance des données
 db = 0
 
 def del_row_db(sec_id,dbkey):
 	transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
 	store = transaction.objectStore(sec_id)
-	console.log(f"erasing in DB key {dbkey} in store {sec_id}")
+	console.log(f"DB: erasing row in store {sec_id} with {dbkey}")
 	store.delete(dbkey)
 
 def save_status_db(checked, sec_id):
 	transaction = db.transaction(DB_SEC_STORE,"readwrite")
 	store = transaction.objectStore(DB_SEC_STORE)
+	console.log(f"DB: saving {sec_id} status {checked}")
 	store.put(checked,sec_id)
 
 def create_datapack(row):
@@ -64,10 +60,6 @@ def create_datapack(row):
 	return data
 
 def when_typing_done(row_desc):
-	#tbody,nbrows,index,row=get_row_info(cellule)
-	#section = get_section(cellule)
-	#sec_id = section.id
-
 	sec_id = row_desc["section"]
 	dbkey=row_desc["dbkey"]
 
@@ -81,10 +73,10 @@ def when_typing_done(row_desc):
 	if row!=0:#le row dont le timer vient d'expirer est toujours bien là
 		if db!=0:#la requête d'ouverture est passée
 			data = create_datapack(row)
-			console.log(f"updating in DB {data} in store {sec_id} with key {dbkey}")
+			console.log(f"DB: updating row in section {sec_id} with key {dbkey} and value {data}")
 			transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
 			store = transaction.objectStore(sec_id)
-			store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
+			store.put(data,row.dbkey)
 
 #Une fois le row pour la première fois persisté, on y inscrit sa clé via cette callback pour les updates ultérieures
 def write_key_in_row(e):
@@ -168,7 +160,6 @@ def when_keyup(e):
 		console.warn("DB: can't write in {sec_id}, database closed ; event queued")
 		event_queue.put(e)#on sauvegarde l'événement : on le relancera plus tard quand la base sera prête
 
-
 def restore_section(e):
 	sec_id = e.target.sec_id
 	section=document[sec_id]
@@ -177,12 +168,12 @@ def restore_section(e):
 	store_content = e.target.result
 
 	if store_content:#il y a une ligne à insérer
-		try:#pythonic : "better to ask for forgiveness than permission", on essaye d'appeler une variable statique de la fonction (qui persiste entre les appels), si elle n'existe pas, une exception est levée et on l'initialise donc
-			if sec_id in restore_section.wasnum:
-				if not restore_section.wasnum[sec_id]:#la dernière ligne de la section actuelle n'était pas numérique : il faut donc créer une ligne vide
-					make_new_row(tbody)
-		except:
-			restore_section.wasnum={}
+		#try:#pythonic : "better to ask for forgiveness than permission", on essaye d'appeler une variable statique de la fonction (qui persiste entre les appels), si elle n'existe pas, une exception est levée et on l'initialise donc
+		#	if sec_id in restore_section.wasnum:
+		#		if not restore_section.wasnum[sec_id]:#la dernière ligne de la section actuelle n'était pas numérique : il faut donc créer une ligne vide
+		#			make_new_row(tbody)
+		#except:
+			#restore_section.wasnum={}
 		dbkey=store_content.key
 		rowdata=javascript.JSObject.to_dict(store_content.value)
 		list_tr=tbody.getElementsByTagName("TR")
@@ -193,13 +184,13 @@ def restore_section(e):
 		enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
 		enc_cell.text=rowdata["enc"]
 		validate_enc(enc_cell)
-
+		#make_new_row(tbody)
 		#check de si la ligne insérée était numérique, pour l'éventuel coup d'après
-		text_check=enc_cell.text
-		if text_check.isnumeric():
-			restore_section.wasnum[sec_id]=True
-		else:
-			restore_section.wasnum[sec_id]=False
+		#text_check=enc_cell.text
+		#if text_check.isnumeric():
+		#	restore_section.wasnum[sec_id]=True
+		#else:
+		#	restore_section.wasnum[sec_id]=False
 
 		#bricolage pour appeler la fonction javascript "continue" sur le cursor et refaire un cycle
 		cont = getattr(store_content, "continue")
@@ -273,21 +264,37 @@ def open_db(withVersion):
 	dbrequest.bind("success", when_db_opened)
 	console.groupEnd()
 
-#Ouverture de la base de données
-def disp_persist(granted):#TODO remplacer ces alertes de merde par des logs
-	if granted:
-		alert("Storage will persist and not be cleared")
+idb_present=False
+persist_present=False
+persist_granted=True
+
+def app_boot():
+	msg=""
+	if not persist_present:
+		msg+="Persistance non supportée par le navigateur, les données pourront être effacées entre deux démarrages par le nettoyage automatique du cache.\n"
 	else:
-		alert("Storage won’t persist and may be cleared")
+		if not persist_granted:
+			msg+="Persistance non accordée par le navigateur, les données pourront être effacées entre deux démarrages par le nettoyage automatique du cache.\n"
+	if not idb_present:
+		msg+="IndexedDB non supportée par le navigateur, les données ne seront pas sauvegardées entre deux démarrages de l'application."
+	else:
+		open_db(False)#false pour ne pas spécifier de version (cf. fonction appelée) afin de récupérer la base déjà installée, quelle que soit la version, afin de détecter l'emploi d'une éventuelle vieille version à supprimer
+	if msg!="":
+		alert(msg)
+
+#Ouverture de la base de données
+def disp_persist(granted):
+	global persist_granted
+	persist_granted=granted
+	app_boot()#on passe quoi qu'il arrive au démarrage de l'appli
+
+if hasattr(window,"indexedDB"):
+	idb_present=True
 
 navigator = window.navigator
 if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
-	navigator.storage.persist().then(disp_persist)
-else:
-	alert("Go fuck yourself")
-
-if hasattr(window,"indexedDB"):
-	open_db(False)#false pour ne pas spécifier de version (cf. fonction appelée) afin de récupérer la base déjà installée, quelle que soit la version, afin de détecter l'emploi d'une éventuelle vieille version à supprimer
+	persist_present=True
+	navigator.storage.persist().then(disp_persist,app_boot)#si persistance, on traite, sinon on skippe direct au démarrage de l'appli
 
 #SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
 def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
@@ -436,15 +443,15 @@ def validate_enc(cellule):
 		i.remove()
 	texte_saisi=cellule.text
 
-	if texte_saisi.isnumeric():
-		cellule.style.background="MediumSpringGreen"
+	if texte_saisi:
+		if texte_saisi.isnumeric():
+			cellule.style.background="MediumSpringGreen"
+		else:
+			cellule.style.background="red"
 		tbody, nbrows, row_index, trash=get_row_info(cellule)
 		if(row_index==(nbrows-1)):#on est en train de remplir l'enc de la dernière ligne, il faut donc en rajouter une
 			make_new_row(tbody)
-	else:
-		if texte_saisi:
-			cellule.style.background="red"
-	
+
 	update_enc(get_section(cellule))#on appelle toujours l'update de l'enc car on peut avoir rendu non-numérique une cellule l'étant antérieurement
 
 def check_text_changed(e,is_enc_col):
@@ -506,7 +513,6 @@ def flip_section(case):
 			update_main_recap()
 	#persistance en base
 	save_status_db(case.checked, section.id)
-
 
 list_checkboxes=document.getElementsByTagName("INPUT")
 for i in list_checkboxes:
