@@ -44,11 +44,10 @@ def get_row_info(cellule):
 db = 0
 
 def del_row_db(sec_id,dbkey):
-	if db!=0:#la requête d'ouverture est passée
 		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
 		store = transaction.objectStore(sec_id)
 		console.log(f"erasing in DB key {dbkey} in store {sec_id}")
-		store.delete(dbkey)#TODO binder callback de succès et échec pour log
+		store.delete(dbkey)
 
 def create_datapack(row):
 	obj_cell = row.getElementsByClassName("Col_Obj")[0]
@@ -124,9 +123,8 @@ def when_keyup(e):
 	sec_id = section.id
 	tbody,nbrows,index,row=get_row_info(cellule)
 
-	#TODO ici et ailleurs (suppression?) exporter à un thread la tache de vérifier ça et de rappeler quand la base est dispo
 	if db!=0:#la requête d'ouverture est passée
-		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
+		transaction = db.transaction(sec_id,"readwrite")
 		store = transaction.objectStore(sec_id)
 		if hasattr(row,"dbkey"):#le row a déjà été persisté
 			dbkey = row.dbkey
@@ -165,8 +163,9 @@ def when_keyup(e):
 				req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
 				req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
 				req.bind("success", write_key_in_row)
-
-
+	else:
+		console.error("DB: can't write in {sec_id}, database closed")
+		#On pourrait améliorer ce système en mettant en mettant la requête dans une queue dépilée par le handler d'ouverture de base, si l'on avait 40000 fois plus de temps
 
 def restore_section(e):
 	sec_id = e.target.sec_id

@@ -142,6 +142,10 @@ async function fetch_response(req)
 			response = await fetch(req);//on fetch, sans attente active
 			await cache_request(req, response);//CRUCIAL : sans cela on passe à la suite et la réponse est returned, donc traitée AVANT la mise en cache (car cache_request est async! Le flot continue donc pendant ses propres await) : qui ne peut donc se faire car la réponse a déjà été consommée
 		}
+		else
+		{
+			console.log(`SW:url:${req.url} found in cache`);
+		}
 		return response;
 	}
 	catch (e)
