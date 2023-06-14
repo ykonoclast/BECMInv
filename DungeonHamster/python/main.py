@@ -16,6 +16,7 @@ list_enc_thresh=[0, 401, 801, 1201, 1601, 2401]
 
 list_active_sections = [x.id for x in document.getElementsByClassName("Active_Section")]
 list_inactive_sections = [x.id for x in document.getElementsByClassName("Inactive_Section")]
+list_all_sections =list_active_sections+list_inactive_sections
 
 #TODO supprimer les alertes et mieux logger
 
@@ -39,171 +40,8 @@ def get_row_info(cellule):
 	return tbody, nbrows, row_index, row
 
 
-
-
-
-
-
-
-
-
-
-
 #SECTION : persistance des données
 db = 0
-
-def disp_persist(granted):#TODO remplacer ces alertes de merde par des logs
-	if granted:
-		alert("Storage will persist and not be cleared")
-	else:
-		alert("Storage won’t persist and may be cleared")
-
-navigator = window.navigator
-if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
-	navigator.storage.persist().then(disp_persist)
-else:
-	alert("Go fuck yourself")
-	
-def upgradeDB(event):#base de données de nom inconnu ou de version n'existant pas : on construit le schéma
-	#TODO supprimer anciennes version
-	db = event.target.result#event.target est la REQUÊTE IndexedDb ; ici le résultat de la requête (d'ouverture) est la base elle-même
-
-	for section in list_active_sections+list_inactive_sections:#on crée un store par section
-		db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
-	db.createObjectStore(DB_SEC_STORE)#pas de clé autogénérée : les id de section sont uniques
-
-
-def open_db(withVersion):
-	if withVersion:
-		dbrequest = window.indexedDB.open(DB_NAME,DB_VERSION)
-	else:
-		dbrequest = window.indexedDB.open(DB_NAME)
-	dbrequest.bind("upgradeneeded", upgradeDB)
-	dbrequest.bind("success", when_db_opened)
-
-wasnum={}
-
-def restore_section(e):
-	global wasnum
-	sec_id = e.target.sec_id
-	section=document[sec_id]
-	list_tbody=section.getElementsByTagName("TBODY")
-	tbody=list_tbody[0]
-	store_content = e.target.result
-
-	if store_content:
-		if sec_id in wasnum:
-			if not wasnum[sec_id]:
-				make_new_row(tbody)
-
-		dbkey=store_content.key
-		rowdata=javascript.JSObject.to_dict(store_content.value)
-		console.log(f"IN RESTORE: key={dbkey} value={rowdata}")
-		list_tr=tbody.getElementsByTagName("TR")
-		lastrow=list_tr[-1]
-		lastrow.dbkey=dbkey
-		obj_cell = lastrow.getElementsByClassName("Col_Obj")[0]
-		obj_cell.text = rowdata["obj"]
-		enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
-		enc_cell.text=rowdata["enc"]
-		validate_enc(enc_cell)
-
-		text_check=enc_cell.text
-		if text_check.isnumeric():
-			wasnum[sec_id]=True
-		else:
-			wasnum[sec_id]=False
-
-		cont = getattr(store_content, "continue")
-		cont()
-	else:#on a fini de remplir la section, on restaure maintenant son état activé ou non
-		print(f"store:{sec_id} EMPTY")
-		transaction = db.transaction(DB_SEC_STORE,"readonly")
-		store = transaction.objectStore(DB_SEC_STORE)
-		countreq = store.count(sec_id)
-
-		def check_section_status(e):
-			keycount = e.target.result
-			if keycount>0:
-				checkedreq=store.get(sec_id)
-				def restore_section_status(e):
-					checked = e.target.result
-					print(f"keycount {sec_id}:{keycount} value:{checked}")
-					listcases = section.getElementsByTagName("INPUT")
-					case=listcases[0]
-					if checked:
-						case.setAttribute("checked", "true")
-					else:
-						case.removeAttribute("checked")
-					flip_section(case)
-
-				checkedreq.bind("success",restore_section_status)
-		countreq.bind("success",check_section_status)
-
-
-
-
-
-
-	#for r in store_content:
-	#	rowdata=javascript.JSObject.to_dict(r)
-	#	console.log(f"RESTORE : {rowdata}")
-	#	list_tr=tbody.getElementsByTagName("TR")
-	#	lastrow=list_tr[-1]
-	#	obj_cell = lastrow.getElementsByClassName("Col_Obj")[0]
-	#	obj_cell.text = rowdata["obj"]
-	#	enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
-	#	enc_cell.text=rowdata["enc"]
-	#	validate_enc(enc_cell)
-
-
-
-
-
-
-
-
-
-def when_db_opened(event):#sera forcément appelé après upgraDB car l'event success arrive toujours après le traitement de upgradeneeded
-	version = event.target.result.version
-
-	if version != DB_VERSION:#TODO commenter plus, mais en gros c'est la vieille version et on la supprime
-		event.target.result.close()
-		window.indexedDB.deleteDatabase(DB_NAME)
-		open_db(True)
-	else :#setup from DB
-		global db #pour affecter à la variable globale et pas en créer une local avec l'affectation qui suit
-		db = event.target.result;
-		#const objectStore = db.transaction("customers").objectStore("customers")
-		transaction = db.transaction(list_active_sections+list_inactive_sections,"readonly")
-		for section in list_active_sections+list_inactive_sections:
-			console.log(f"OPENING STORE {section}")
-			store = transaction.objectStore(section)
-			#strequest = store.getAll()
-			strequest = store.openCursor()
-
-
-			strequest.sec_id=section
-			strequest.bind("success",restore_section)
-
-
-
-
-
-
-
-
-#Ouverture de la base de données
-if hasattr(window,"indexedDB"):
-	open_db(False)#TODO commenter pourquoi le false et la méthode appelée
-
-
-
-
-
-
-
-
 
 def del_row_db(sec_id,dbkey):
 	if db!=0:#la requête d'ouverture est passée
@@ -211,24 +49,6 @@ def del_row_db(sec_id,dbkey):
 		store = transaction.objectStore(sec_id)
 		console.log(f"erasing in DB key {dbkey} in store {sec_id}")
 		store.delete(dbkey)#TODO binder callback de succès et échec pour log
-
-
-
-
-
-
-
-
-
-#gestion du timer de 5s après frappe d'une touche dans un champ pour limiter les appels BD
-
-
-
-#TODO commenter et expliquer ce que l'on fait ici
-def write_key_in_row(e):
-	console.log(f"in wkir e={e}")
-	row = e.target.row_persisted
-	row.dbkey = e.target.result
 
 def create_datapack(row):
 	obj_cell = row.getElementsByClassName("Col_Obj")[0]
@@ -242,7 +62,6 @@ def when_typing_done(row_desc):
 	#tbody,nbrows,index,row=get_row_info(cellule)
 	#section = get_section(cellule)
 	#sec_id = section.id
-
 
 	sec_id = row_desc["section"]
 	dbkey=row_desc["dbkey"]
@@ -263,10 +82,20 @@ def when_typing_done(row_desc):
 			store = transaction.objectStore(sec_id)
 			store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
 
-
-
 worker_dict = {}#TODO initialiser avec la liste des section et mutualiser le code avec la création de la base (ATTENTION : pas initialiser au même endroit car on ne maîtrise pas le temps de création de la base)
 worker_queue = Queue()
+
+def worker_message(msg):
+	row_desc=msg.data
+	sec_id=row_desc["section"]
+	dbkey=row_desc["dbkey"]
+	console.log(f"worker CALLBACK : date is : section:{sec_id};key:{dbkey}")
+	#on supprime le worker du dictionnaire des workers actifs
+	if sec_id in worker_dict:
+		if dbkey in worker_dict[sec_id]:
+			#on fait tous les tests ci-dessus car, si l'utilisateur tape très vite, il peut y avoir plusieurs workers démarrés ou plusieurs timers lancés
+			worker_dict[sec_id].pop(dbkey)
+	when_typing_done(row_desc)
 
 #TODO commenter la procédure d'enregistrement
 def worker_ready(new_worker):
@@ -282,22 +111,12 @@ def worker_ready(new_worker):
 	else:#la section est déjà dans le dico
 		worker_dict[sec_id][dbkey]=new_worker
 
-def worker_message(msg):
-	row_desc=msg.data
-	sec_id=row_desc["section"]
-	dbkey=row_desc["dbkey"]
-	console.log(f"worker CALLBACK : date is : section:{sec_id};key:{dbkey}")
-	#on supprime le worker du dictionnaire des workers actifs
-	if sec_id in worker_dict:
-		if dbkey in worker_dict[sec_id]:
-			#on fait tous les tests ci-dessus car, si l'utilisateur tape très vite, il peut y avoir plusieurs workers démarrés ou plusieurs timers lancés
-			worker_dict[sec_id].pop(dbkey)
-	when_typing_done(row_desc)
-
-
-
-
-
+#TODO commenter et expliquer ce que l'on fait ici
+def write_key_in_row(e):
+	console.log(f"in wkir e={e}")
+	row = e.target.row_persisted
+	row.dbkey = e.target.result
+	row.dblock=False
 
 def when_keyup(e):
 	cellule = e.target
@@ -335,28 +154,135 @@ def when_keyup(e):
 					worker_dict[sec_id][dbkey]=0
 
 		else:#le row n'a jamais été persisté, on va le créer pour avoir une clé
-			data = create_datapack(row)
-			console.log(f"adding in DB {data} in store {sec_id}")
-			req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
-			req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
-			req.bind("success", write_key_in_row)
+			go=True#on vérifie que le row n'est pas en train d'être inscrit en base car on ne maîtrise pas le temps qu'il faudra pour appeler write_key_in_row en callback
+			if hasattr(row,"dblock"):
+				if row.dblock:
+					go=False
+			if go:
+				row.dblock=True
+				data = create_datapack(row)
+				console.log(f"adding in DB {data} in store {sec_id}")
+				req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
+				req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
+				req.bind("success", write_key_in_row)
 
 
 
+def restore_section(e):
+	sec_id = e.target.sec_id
+	section=document[sec_id]
+	list_tbody=section.getElementsByTagName("TBODY")
+	tbody=list_tbody[0]
+	store_content = e.target.result
 
+	if store_content:#il y a une ligne à insérer
+		try:#pythonic : "better to ask for forgiveness than permission", on essaye d'appeler une variable statique de la fonction (qui persiste entre les appels), si elle n'existe pas, une exception est levée et on l'initialise donc
+			if sec_id in restore_section.wasnum:
+				if not restore_section.wasnum[sec_id]:#la dernière ligne de la section actuelle n'était pas numérique : il faut donc créer une ligne vide
+					make_new_row(tbody)
+		except:
+			restore_section.wasnum={}
+		dbkey=store_content.key
+		rowdata=javascript.JSObject.to_dict(store_content.value)
+		list_tr=tbody.getElementsByTagName("TR")
+		lastrow=list_tr[-1]
+		lastrow.dbkey=dbkey
+		obj_cell = lastrow.getElementsByClassName("Col_Obj")[0]
+		obj_cell.text = rowdata["obj"]
+		enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
+		enc_cell.text=rowdata["enc"]
+		validate_enc(enc_cell)
 
+		#check de si la ligne insérée était numérique, pour l'éventuel coup d'après
+		text_check=enc_cell.text
+		if text_check.isnumeric():
+			restore_section.wasnum[sec_id]=True
+		else:
+			restore_section.wasnum[sec_id]=False
 
+		#bricolage pour appeler la fonction javascript "continue" sur le cursor et refaire un cycle
+		cont = getattr(store_content, "continue")
+		cont()
 
+	else:#on a fini de remplir la section, on restaure maintenant son état activé ou non
+		transaction = db.transaction(DB_SEC_STORE,"readonly")
+		store = transaction.objectStore(DB_SEC_STORE)
+		countreq = store.count(sec_id)
 
+		def check_section_status(e):#callback en closure pour garder le contexte de sec_id
+			keycount = e.target.result
+			if keycount>0:
+				checkedreq=store.get(sec_id)
+				def restore_section_status(e):#callback en closure pour garder le contexte de section
+					checked = e.target.result
+					listcases = section.getElementsByTagName("INPUT")
+					case=listcases[0]
+					if checked:
+						case.setAttribute("checked", "true")
+					else:
+						case.removeAttribute("checked")
+					flip_section(case)
 
+				checkedreq.bind("success",restore_section_status)
+		countreq.bind("success",check_section_status)
 
+def upgradeDB(event):#base de données de nom inconnu ou de version n'existant pas : on construit le schéma
+	console.groupCollapsed("DB: upgrade needed, creating object stores")
+	db = event.target.result#event.target est la REQUÊTE IndexedDb ; ici le résultat de la requête (d'ouverture) est la base elle-même
+	for section in list_all_sections:#on crée un store par section
+		db.createObjectStore(section, { "autoIncrement": True })#store sans index (on n'interrogera jamais sur les colonnes), autoincrement pour clé technique autoconstruite (car on peut pas utiliser rowindex : il change avec suppressions) ou de keypath ; voir la doc : beaucoup d'implications sur les keypath et les keygenerators (notamment uniquement objets JS si keypath)
+		console.log(f"store:{section}")
+	db.createObjectStore(DB_SEC_STORE)#nouveau store, pour grisage/dégrisage des sections, pas de clé autogénérée : les id de section sont uniques
+	console.log(f"store:{DB_SEC_STORE}")
+	console.groupEnd()
 
+def when_db_opened(event):#sera forcément appelé après upgradeDB car l'event success arrive toujours après le traitement de upgradeneeded
+	version = event.target.result.version
+	if version != DB_VERSION:#la version déjà installée n'est pas la dernière, on la supprime et on rouvre une nouvelle base avec la bonne version
+		console.log(f"DB: older version ({version}) will be deleted then current version({DB_VERSION} will be created)")
+		event.target.result.close()
+		window.indexedDB.deleteDatabase(DB_NAME)
+		open_db(True)
+	else :#setup from DB
+		console.groupCollapsed("DB: successfully opened, restoring sections")
+		global db
+		db = event.target.result;
+		transaction = db.transaction(list_all_sections,"readonly")
+		for section in list_all_sections:
+			console.log(f"Section:{section}")
+			store = transaction.objectStore(section)
+			strequest = store.openCursor()
+			strequest.sec_id=section
+			strequest.bind("success",restore_section)
+		console.groupEnd()
 
+def open_db(withVersion):
+	console.groupCollapsed("DB: Opening...")
+	if withVersion:
+		console.log(f"Version={DB_VERSION}")
+		dbrequest = window.indexedDB.open(DB_NAME,DB_VERSION)
+	else:
+		console.log("Version=last installed")
+		dbrequest = window.indexedDB.open(DB_NAME)
+	dbrequest.bind("upgradeneeded", upgradeDB)
+	dbrequest.bind("success", when_db_opened)
+	console.groupEnd()
 
+#Ouverture de la base de données
+def disp_persist(granted):#TODO remplacer ces alertes de merde par des logs
+	if granted:
+		alert("Storage will persist and not be cleared")
+	else:
+		alert("Storage won’t persist and may be cleared")
 
+navigator = window.navigator
+if hasattr(navigator, "storage") and hasattr(navigator.storage,"persist"):
+	navigator.storage.persist().then(disp_persist)
+else:
+	alert("Go fuck yourself")
 
-
-
+if hasattr(window,"indexedDB"):
+	open_db(False)#false pour ne pas spécifier de version (cf. fonction appelée) afin de récupérer la base déjà installée, quelle que soit la version, afin de détecter l'emploi d'une éventuelle vieille version à supprimer
 
 #SECTION : gestion écartement entre barre du bas et reste du contenu (car la position fixe enlève du flux et empêche donc de scroller assez pour voir tout le tableau le plus bas)
 def set_main_padding(*args):#pour avoir des arguments à volonté, comme on ne l'appelle pas forcément avec l'event e (au premier appel au chargement)
@@ -551,7 +477,6 @@ def flip_section(case):
 	list_td=section.getElementsByTagName("TD")
 	sec_tot = section.getElementsByClassName("Sec_Tot")[0]
 	sec_enc = section.getElementsByClassName("Sec_Enc")[0]
-	print(f"section:{section.id} case status :{case.checked}")
 	for td in list_td:
 		if case.checked:
 			section.class_name="Active_Section"
@@ -576,10 +501,10 @@ def flip_section(case):
 			sec_tot.text=0
 			update_main_recap()
 	#persistance en base
-	transaction = db.transaction(DB_SEC_STORE,"readwrite")#on limite la transaction au store d'intérêt pour pers
+	#TODO : exporter ce code dans une fonction dans la section DB
+	transaction = db.transaction(DB_SEC_STORE,"readwrite")
 	store = transaction.objectStore(DB_SEC_STORE)
-	store.put(case.checked,section.id)#exceptions/échec toussa
-
+	store.put(case.checked,section.id)#TODO exceptions/échec toussa
 
 list_checkboxes=document.getElementsByTagName("INPUT")
 for i in list_checkboxes:

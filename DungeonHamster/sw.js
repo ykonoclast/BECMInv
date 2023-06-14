@@ -12,7 +12,7 @@ async function pre_cache()//la fonction async attendra sur des await pendant que
 {
 	try
 	{
-		console.log(`Pre-caching for cache ${CACHE_VERSION}...`);
+		console.log(`SW:Pre-caching for cache ${CACHE_VERSION}...`);
 		//le couple "const" et "await" remplace ce qui se trouve respectivement après et avant le "then" en syntaxe de promise (en ce cas : caches.open(CACHE_VERSION).then(cache=>cache.addALL(LIST_PRE_CACHE))
 		const currentCache = await caches.open(CACHE_VERSION);//pas d'attente active sur l'ouverture du cache
 		await currentCache.addAll(LIST_PRE_CACHE);
@@ -26,7 +26,7 @@ async function pre_cache()//la fonction async attendra sur des await pendant que
 function when_install(event)
 {
 	self.skipWaiting();//on n'attend pas la fin de vie du précédent service worker : on le supprime pour installer le nouveau directement.
-	console.log("Service Worker installing...");
+	console.log("SW:Service Worker installing...");
 	try
 	{
 		event.waitUntil(pre_cache());//le service worker ne passera au stade d'ACTIVATION que APRÈS tous les traitements de pré-cache
@@ -45,7 +45,7 @@ async function delete_single_cache(key)
 {
 	try
 	{
-		console.log(`Deleting older cache ${key}...`);
+		console.log(`SW:Deleting older cache ${key}...`);
 		await caches.delete(key);
 	}
 	catch (e)
@@ -119,7 +119,7 @@ async function cache_request(request, response)
 	{//on ne cache pas les erreurs réseau
 		try
 		{
-			console.log(`caching url:${request.url}`);
+			console.log(`SW:caching url:${request.url}`);
 			const currentCache = await caches.open(CACHE_VERSION);
 			await currentCache.put(request, response.clone());
 		}
@@ -138,7 +138,7 @@ async function fetch_response(req)
 
 		if (!response)
 		{//la réponse est vide : le cache ne contient pas la valeur recherchée : on va donc appeler le réseau
-			console.log(`url:${req.url} not in cache : fetching through network`);
+			console.log(`SW:url:${req.url} not in cache : fetching through network`);
 			response = await fetch(req);//on fetch, sans attente active
 			await cache_request(req, response);//CRUCIAL : sans cela on passe à la suite et la réponse est returned, donc traitée AVANT la mise en cache (car cache_request est async! Le flot continue donc pendant ses propres await) : qui ne peut donc se faire car la réponse a déjà été consommée
 		}
@@ -154,11 +154,11 @@ function when_fetch(event)
 {
 	{
 		let req = event.request;
-		console.log(`fetching url:${req.url}`);
+		console.log(`SW:fetching url:${req.url}`);
 		if (req.url.includes("?"))//TODO étendre ce test à brython et sa lib aussi... enfin à tout ce qui possède un "?" au milieu en fait et tester
 				//ATTENTION!!!!!!!!!!!!!! L'appel à Brython.js semble être en lien avec le web worker : à surveiller?
 				{//cas particulier de brython qui appelle ses scripts en les postfixant d'un numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
-					console.log("stripping url of parameters");
+					console.log("SW:stripping url of parameters");
 					const newUrl = event.request.url.split('?')[0];
 					req = new Request(newUrl, event.request);
 				}
