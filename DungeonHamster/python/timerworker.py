@@ -8,7 +8,7 @@ MSG_RESTART="restart"
 def timer_expired():
 	sec_id=row_desc["section"]
 	dbkey=row_desc["dbkey"]
-	console.log(f"Timer worker : desc={sec_id};{dbkey} : TIMER EXPIRED")
+	console.log(f"Timer worker for section:{sec_id} and key:{dbkey} : TIMER EXPIRED")
 	self.send(row_desc)
 	self.close()
 
@@ -26,7 +26,7 @@ def when_messaged(msg):
 
 	sec_id=row_desc["section"]
 	dbkey=row_desc["dbkey"]
-	console.log(f"Timer worker : desc={sec_id};{dbkey} : TIMER {stage}")
+	console.log(f"Timer worker for section:{sec_id} and key:{dbkey} : TIMER {stage}")
 	typing_timer = timer.set_timeout(timer_expired, typing_interval)
 
 self.bind('message',when_messaged)

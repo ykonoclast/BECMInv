@@ -90,7 +90,6 @@ def when_typing_done(row_desc):
 
 #TODO commenter et expliquer ce que l'on fait ici
 def write_key_in_row(e):
-	console.log(f"in wkir e={e}")
 	row = e.target.row_persisted
 	row.dbkey = e.target.result
 	row.dblock=False
@@ -108,16 +107,14 @@ def when_keyup(e):
 		if hasattr(row,"dbkey"):#le row a déjà été persisté
 			dbkey = row.dbkey
 			create_worker=True
-			try:
-				if sec_id in when_keyup.worker_dict:#on a déjà historisé des rows de cette section
-					if dbkey in when_keyup.worker_dict[sec_id]:#le row possède un worker actif
-						create_worker=False
-						if when_keyup.worker_dict[sec_id][dbkey]!=0:#le worker est déjà initialisé, on peut donc le relancer (sinon c'est inutile, on attend juste)
-							timer_worker = when_keyup.worker_dict[sec_id][dbkey]
-							console.log("ENVOI MSG RESTART")
-							timer_worker.send(MSG_RESTART)
-			except:
-				when_keyup.worker_dict={}#TODO initialiser avec la liste des section et mutualiser le code avec la création de la base (ATTENTION : pas initialiser au même endroit car on ne maîtrise pas le temps de création de la base)
+			try:#au cas où worker_dict existe déjà
+				if dbkey in when_keyup.worker_dict[sec_id]:#le row possède un worker actif, on n'en crééra donc pas de nouveau
+					create_worker=False
+					if when_keyup.worker_dict[sec_id][dbkey]!=0:#le worker est déjà initialisé, on peut donc le relancer (sinon c'est inutile, on attend juste)
+						timer_worker = when_keyup.worker_dict[sec_id][dbkey]
+						timer_worker.send(MSG_RESTART)
+			except:#pas de worker_dict : on l'initialise
+				when_keyup.worker_dict={key:{} for key in list_all_sections}#comprehension de dict : différent de la création avec dict.fromkeys qui aurait donné le MÊME dico vide à toutes les clés : entraînant modif de masse de toutes les entrées d'un coup à chaque assignation, avec la comprehension on aura un dico vide DIFFERENT à chaque fois
 			if create_worker:#pas de worker actif, on le crée
 				row_desc={"section":sec_id,"dbkey":dbkey}#TODO faire un namedtuple plutôt ici
 				try:
@@ -126,17 +123,13 @@ def when_keyup(e):
 					when_keyup.worker_queue=Queue()
 					when_keyup.worker_queue.put(row_desc)
 
-				console.log("CREATION WORKER")
-
-				def worker_message(msg):
+				def worker_message(msg):#closure pour garder le contexte de worker_dict
 					row_desc=msg.data
 					sec_id=row_desc["section"]
 					dbkey=row_desc["dbkey"]
-					console.log(f"worker CALLBACK : date is : section:{sec_id};key:{dbkey}")
 					#on supprime le worker du dictionnaire des workers actifs
-					if sec_id in when_keyup.worker_dict:
-						if dbkey in when_keyup.worker_dict[sec_id]:
-							when_keyup.worker_dict[sec_id].pop(dbkey)
+					if dbkey in when_keyup.worker_dict[sec_id]:
+						when_keyup.worker_dict[sec_id].pop(dbkey)
 					when_typing_done(row_desc)
 
 				#TODO commenter la procédure d'enregistrement
@@ -146,26 +139,14 @@ def when_keyup(e):
 					new_worker.send(row_desc)
 					sec_id = row_desc["section"]
 					dbkey =row_desc["dbkey"]
+					when_keyup.worker_dict[sec_id][dbkey]=new_worker
 
-					if sec_id not in when_keyup.worker_dict:#la section ne possède aucun row avec worker actif
-						dict_entry = {row_desc["dbkey"]:new_worker}
-						when_keyup.worker_dict[sec_id]=dict_entry
-					else:#la section est déjà dans le dico
-						when_keyup.worker_dict[sec_id][dbkey]=new_worker
-
-
-
-
-
-
+				#on signale qu'un worker est en train de s'initialiser, pour ne pas risquer d'en créer un deuxième avant que le premier n'ait complètement démarré
+				when_keyup.worker_dict[sec_id][dbkey]=0
+				#on crée le worker avec les deux callback closures définies ci-dessus
 				worker.create_worker("timerworker", worker_ready, worker_message)
 
-				#on signale maintenant qu'un worker est en train de s'initialiser, pour ne pas risquer d'en créer un deuxième avant que le premier n'ait complètement démarré
-				if sec_id not in when_keyup.worker_dict:
-					dict_entry = {row_desc["dbkey"]:0}
-					when_keyup.worker_dict[sec_id]=dict_entry
-				else:#la section est déjà dans le dico
-					when_keyup.worker_dict[sec_id][dbkey]=0
+
 
 		else:#le row n'a jamais été persisté, on va le créer pour avoir une clé
 			go=True#on vérifie que le row n'est pas en train d'être inscrit en base car on ne maîtrise pas le temps qu'il faudra pour appeler write_key_in_row en callback
@@ -175,8 +156,8 @@ def when_keyup(e):
 			if go:
 				row.dblock=True
 				data = create_datapack(row)
-				console.log(f"adding in DB {data} in store {sec_id}")
-				req = store.add(data)#TODO binder callback d'échec pour log et logger plus dans celle de succès
+				console.log(f"DB: creating {data} in store {sec_id}")
+				req = store.add(data)
 				req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
 				req.bind("success", write_key_in_row)#on n'utilise pas ici une closure en callback car je ne suis pas sûr de comment le contexte sera maintenu : row peut-il changer si la fonction englobante est appelée AVANT l'exécution de la callback? Mieux vaut utiliser la technique de l'attribut supplémentaire dans la requête
 	else:

@@ -162,8 +162,8 @@ function when_fetch(event)
 		if (req.url.includes("?"))//TODO étendre ce test à brython et sa lib aussi... enfin à tout ce qui possède un "?" au milieu en fait et tester
 				//ATTENTION!!!!!!!!!!!!!! L'appel à Brython.js semble être en lien avec le web worker : à surveiller?
 				{//cas particulier de brython qui appelle ses scripts en les postfixant d'un numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
-					console.log("SW:stripping url of parameters");
 					const newUrl = event.request.url.split('?')[0];
+					console.log("SW:stripping url of parameters : newUrl");
 					req = new Request(newUrl, event.request);
 				}
 
