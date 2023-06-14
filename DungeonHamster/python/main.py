@@ -3,9 +3,11 @@ from bisect import bisect_right
 from queue import Queue
 import javascript
 
-#NOTE GÉNÉRALE : peu de gestion d'erreur (il faut dire que généralement s'il y a un problème on veut juste que ça continue à tourner)
+#NOTE GÉNÉRALE 1 : peu de gestion d'erreur (il faut dire que généralement s'il y a un problème on veut juste que ça continue à tourner)
 # de plus le browser logge déjà les erreurs lui-même...
 # néanmoins peu satisfaisant, les prochains projets devront faire mieux
+
+#NOTE GÉNÉRALE 2 : il n'est pas bon d'avoir les classes css en chaîne répétées : il faudrait de base des variables globales.
 
 #TODO ajouter en var globales les noms de classes css en cas de changement
 DB_NAME="DungeonDB"
@@ -168,12 +170,6 @@ def restore_section(e):
 	store_content = e.target.result
 
 	if store_content:#il y a une ligne à insérer
-		#try:#pythonic : "better to ask for forgiveness than permission", on essaye d'appeler une variable statique de la fonction (qui persiste entre les appels), si elle n'existe pas, une exception est levée et on l'initialise donc
-		#	if sec_id in restore_section.wasnum:
-		#		if not restore_section.wasnum[sec_id]:#la dernière ligne de la section actuelle n'était pas numérique : il faut donc créer une ligne vide
-		#			make_new_row(tbody)
-		#except:
-			#restore_section.wasnum={}
 		dbkey=store_content.key
 		rowdata=javascript.JSObject.to_dict(store_content.value)
 		list_tr=tbody.getElementsByTagName("TR")
@@ -184,13 +180,6 @@ def restore_section(e):
 		enc_cell = lastrow.getElementsByClassName("Col_Enc")[0]
 		enc_cell.text=rowdata["enc"]
 		validate_enc(enc_cell)
-		#make_new_row(tbody)
-		#check de si la ligne insérée était numérique, pour l'éventuel coup d'après
-		#text_check=enc_cell.text
-		#if text_check.isnumeric():
-		#	restore_section.wasnum[sec_id]=True
-		#else:
-		#	restore_section.wasnum[sec_id]=False
 
 		#bricolage pour appeler la fonction javascript "continue" sur le cursor et refaire un cycle
 		cont = getattr(store_content, "continue")
@@ -213,7 +202,7 @@ def restore_section(e):
 						case.setAttribute("checked", "true")
 					else:
 						case.removeAttribute("checked")
-					flip_section(case)
+					flip_section(case,False)
 
 				checkedreq.bind("success",restore_section_status)
 		countreq.bind("success",check_section_status)
@@ -233,7 +222,7 @@ def when_db_opened(event):#sera forcément appelé après upgradeDB car l'event 
 	if version != DB_VERSION:#la version déjà installée n'est pas la dernière, on la supprime et on rouvre une nouvelle base avec la bonne version
 		console.log(f"DB: older version ({version}) will be deleted then current version({DB_VERSION} will be created)")
 		event.target.result.close()
-		window.indexedDB.deleteDatabase(DB_NAME)
+		window.indexedDB.deleteDatabase(DB_NAME)#TODO: si un jour l'on change la base, il ne faudra pas juste la détruire comme à présent mais transférer proprement le schéma pour ne pas détruire les données des utilisateurs
 		open_db(True)
 	else :#setup from DB
 		console.groupCollapsed("DB: successfully opened, restoring sections")
@@ -481,9 +470,9 @@ for i in list_col_obj:
 #SECTION Gestion de l'activation/inactivation des sections
 def when_checkbox_clicked(e):
 	case=e.target
-	flip_section(case)
+	flip_section(case,True)
 
-def flip_section(case):
+def flip_section(case,clicked):
 	section=get_section(case)
 	list_td=section.getElementsByTagName("TD")
 	sec_tot = section.getElementsByClassName("Sec_Tot")[0]
@@ -512,7 +501,8 @@ def flip_section(case):
 			sec_tot.text=0
 			update_main_recap()
 	#persistance en base
-	save_status_db(case.checked, section.id)
+	if clicked:#appel suite action utilsateur, pas restauration depuis la base
+		save_status_db(case.checked, section.id)
 
 list_checkboxes=document.getElementsByTagName("INPUT")
 for i in list_checkboxes:
