@@ -163,7 +163,7 @@ function when_fetch(event)
 				//ATTENTION!!!!!!!!!!!!!! L'appel à Brython.js semble être en lien avec le web worker : à surveiller?
 				{//cas particulier de brython qui appelle ses scripts en les postfixant d'un numéro, on le strippe avant de fetcher pour obtenir le vrai nom de fichier
 					const newUrl = event.request.url.split('?')[0];
-					console.log("SW:stripping url of parameters : newUrl");
+					console.log(`SW:stripping url of parameters : ${newUrl}`);
 					req = new Request(newUrl, event.request);
 				}
 

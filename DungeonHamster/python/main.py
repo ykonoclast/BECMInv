@@ -12,7 +12,6 @@ DB_NAME="DungeonDB"
 DB_VERSION=1
 DB_SEC_STORE="in-act_sections"
 MSG_RESTART="restart"
-#TODO : ci-dessous voir si namedtuples pas meilleur
 list_mvt=[{"turn": 120,"round": 40}, {"turn": 90,"round": 30}, {"turn": 60,"round": 20}, {"turn": 30,"round": 10}, {"turn": 15,	"round": 5}, {"turn": 0,"round": 0}]
 list_enc_thresh=[0, 401, 801, 1201, 1601, 2401]
 
@@ -46,10 +45,15 @@ def get_row_info(cellule):
 db = 0
 
 def del_row_db(sec_id,dbkey):
-		transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
-		store = transaction.objectStore(sec_id)
-		console.log(f"erasing in DB key {dbkey} in store {sec_id}")
-		store.delete(dbkey)
+	transaction = db.transaction(sec_id,"readwrite")#on limite la transaction au store d'intérêt pour pers
+	store = transaction.objectStore(sec_id)
+	console.log(f"erasing in DB key {dbkey} in store {sec_id}")
+	store.delete(dbkey)
+
+def save_status_db(checked, sec_id):
+	transaction = db.transaction(DB_SEC_STORE,"readwrite")
+	store = transaction.objectStore(DB_SEC_STORE)
+	store.put(checked,sec_id)
 
 def create_datapack(row):
 	obj_cell = row.getElementsByClassName("Col_Obj")[0]
@@ -74,7 +78,6 @@ def when_typing_done(row_desc):
 		if hasattr(r,"dbkey"):#un row persisté
 			if r.dbkey==dbkey:
 				row=r
-
 	if row!=0:#le row dont le timer vient d'expirer est toujours bien là
 		if db!=0:#la requête d'ouverture est passée
 			data = create_datapack(row)
@@ -83,18 +86,28 @@ def when_typing_done(row_desc):
 			store = transaction.objectStore(sec_id)
 			store.put(data,row.dbkey)#TODO binder callback de succès et échec pour log
 
-
-
-
-
-
-#TODO commenter et expliquer ce que l'on fait ici
+#Une fois le row pour la première fois persisté, on y inscrit sa clé via cette callback pour les updates ultérieures
 def write_key_in_row(e):
 	row = e.target.row_persisted
 	row.dbkey = e.target.result
 	row.dblock=False
 
-#TODO commenter le fonctionnement général
+def init_row_db(sec_id,row):
+	transaction = db.transaction(sec_id,"readwrite")
+	store = transaction.objectStore(sec_id)
+	data = create_datapack(row)
+	console.log(f"DB: creating {data} in store {sec_id}")
+	req = store.add(data)
+	req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
+	req.bind("success", write_key_in_row)#on n'utilise pas ici une closure en callback car je ne suis pas sûr de comment le contexte sera maintenu : row peut-il changer si la fonction englobante est appelée AVANT l'exécution de la callback? Mieux vaut utiliser la technique de l'attribut supplémentaire dans la requête
+
+#les événements n'ayant pu être traités car la DB n'était pas encore ouverte
+event_queue=Queue()
+
+#Fonction centrale pour la gestion de la persistance. Le fonctionnement est le suivant:
+#L'événement "keyup" fait entrer dans la fonction, on teste alors si le row a déjà été persisté
+#si ce n'est pas le cas : l'utilisateur a tapé le premier caractère dedans, on l'envoie tout de suite en base pour obtenir une clé (car on ne va pas générer un identifiant unique dans le code et aucun attribut ne se prête à être une clé, on envoie donc une première transaction avec le premier caractère pour que la base génère un identifiant, le mécanisme des timers fonctionnant par la suite)
+#si c'est le cas, on va lancer un timer via un webworker pour laisser le temps de compléter la saisie avant d'envoyer le row entier en base
 def when_keyup(e):
 	cellule = e.target
 	section = get_section(cellule)
@@ -102,8 +115,6 @@ def when_keyup(e):
 	tbody,nbrows,index,row=get_row_info(cellule)
 
 	if db!=0:#la requête d'ouverture est passée
-		transaction = db.transaction(sec_id,"readwrite")
-		store = transaction.objectStore(sec_id)
 		if hasattr(row,"dbkey"):#le row a déjà été persisté
 			dbkey = row.dbkey
 			create_worker=True
@@ -116,13 +127,14 @@ def when_keyup(e):
 			except:#pas de worker_dict : on l'initialise
 				when_keyup.worker_dict={key:{} for key in list_all_sections}#comprehension de dict : différent de la création avec dict.fromkeys qui aurait donné le MÊME dico vide à toutes les clés : entraînant modif de masse de toutes les entrées d'un coup à chaque assignation, avec la comprehension on aura un dico vide DIFFERENT à chaque fois
 			if create_worker:#pas de worker actif, on le crée
-				row_desc={"section":sec_id,"dbkey":dbkey}#TODO faire un namedtuple plutôt ici
-				try:
+				row_desc={"section":sec_id,"dbkey":dbkey}
+				try:#au cas où la queue existe déjà
 					when_keyup.worker_queue.put(row_desc)
-				except:
+				except:#pas de queue : on l'initialise
 					when_keyup.worker_queue=Queue()
 					when_keyup.worker_queue.put(row_desc)
 
+				#appelée en fin de timer, va déclencher la mise à jour de la base
 				def worker_message(msg):#closure pour garder le contexte de worker_dict
 					row_desc=msg.data
 					sec_id=row_desc["section"]
@@ -132,22 +144,18 @@ def when_keyup(e):
 						when_keyup.worker_dict[sec_id].pop(dbkey)
 					when_typing_done(row_desc)
 
-				#TODO commenter la procédure d'enregistrement
+				#callback à l'initialisation du worker, pour le configurer et l'enregistrer dans les workers actifs
 				def worker_ready(new_worker):
-					#TODO cracher une ERREUR si la queue ne possède pas un machin
-					row_desc=when_keyup.worker_queue.get()
-					new_worker.send(row_desc)
+					row_desc=when_keyup.worker_queue.get()#garantie d'y trouver quelque chose : on ne lance un worker qu'après avoir peuplé la queue
+					new_worker.send(row_desc)#config du worker
 					sec_id = row_desc["section"]
 					dbkey =row_desc["dbkey"]
-					when_keyup.worker_dict[sec_id][dbkey]=new_worker
+					when_keyup.worker_dict[sec_id][dbkey]=new_worker#enregistrement du worker
 
 				#on signale qu'un worker est en train de s'initialiser, pour ne pas risquer d'en créer un deuxième avant que le premier n'ait complètement démarré
 				when_keyup.worker_dict[sec_id][dbkey]=0
 				#on crée le worker avec les deux callback closures définies ci-dessus
 				worker.create_worker("timerworker", worker_ready, worker_message)
-
-
-
 		else:#le row n'a jamais été persisté, on va le créer pour avoir une clé
 			go=True#on vérifie que le row n'est pas en train d'être inscrit en base car on ne maîtrise pas le temps qu'il faudra pour appeler write_key_in_row en callback
 			if hasattr(row,"dblock"):
@@ -155,14 +163,11 @@ def when_keyup(e):
 					go=False
 			if go:
 				row.dblock=True
-				data = create_datapack(row)
-				console.log(f"DB: creating {data} in store {sec_id}")
-				req = store.add(data)
-				req.row_persisted = row #(IMPORTANT) l'objet sur lequel on binde EST le target passé à la callback DONC on ajoute à la requête un attribut : le row, comme cela la clé générée pourra y être inscrite dans la callback
-				req.bind("success", write_key_in_row)#on n'utilise pas ici une closure en callback car je ne suis pas sûr de comment le contexte sera maintenu : row peut-il changer si la fonction englobante est appelée AVANT l'exécution de la callback? Mieux vaut utiliser la technique de l'attribut supplémentaire dans la requête
+				init_row_db(sec_id,row)
 	else:
-		console.error("DB: can't write in {sec_id}, database closed")
-		#On pourrait améliorer ce système en mettant en mettant la requête dans une queue dépilée par le handler d'ouverture de base, si l'on avait 40000 fois plus de temps
+		console.warn("DB: can't write in {sec_id}, database closed ; event queued")
+		event_queue.put(e)#on sauvegarde l'événement : on le relancera plus tard quand la base sera prête
+
 
 def restore_section(e):
 	sec_id = e.target.sec_id
@@ -251,6 +256,10 @@ def when_db_opened(event):#sera forcément appelé après upgradeDB car l'event 
 			strequest.sec_id=section
 			strequest.bind("success",restore_section)
 		console.groupEnd()
+		while not event_queue.empty():#traitement des événements keyup lancés pendant que la base n'était pas encore ouverte
+			e=event_queue.get()
+			console.log("DB: treating a stored event")
+			when_keyup(e)
 
 def open_db(withVersion):
 	console.groupCollapsed("DB: Opening...")
@@ -299,7 +308,6 @@ def get_speeds(enc):
 	return list_mvt[index]
 
 def get_section_enc(id):
-	#TODO execption si id existe pas
 	recap = document[id]
 	sec_tot = recap.getElementsByClassName("Sec_Tot")[0]
 	return int(sec_tot.text)
@@ -497,10 +505,8 @@ def flip_section(case):
 			sec_tot.text=0
 			update_main_recap()
 	#persistance en base
-	#TODO : exporter ce code dans une fonction dans la section DB
-	transaction = db.transaction(DB_SEC_STORE,"readwrite")
-	store = transaction.objectStore(DB_SEC_STORE)
-	store.put(case.checked,section.id)#TODO exceptions/échec toussa
+	save_status_db(case.checked, section.id)
+
 
 list_checkboxes=document.getElementsByTagName("INPUT")
 for i in list_checkboxes:
